@@ -12,6 +12,7 @@ set(TCS_SRC
 		CO2_properties.cpp
 		csp_dispatch.cpp
 		csp_radiator.cpp
+		csp_solver_cavity_receiver.cpp
 		csp_solver_core.cpp
 		csp_solver_gen_collector_receiver.cpp
 		csp_solver_lf_dsg_collector_receiver.cpp
@@ -105,6 +106,7 @@ set(TCS_SRC
 		co2_testing.h
 		csp_dispatch.h
 		csp_radiator.h
+		csp_solver_cavity_receiver.h
 		csp_solver_core.h
 		csp_solver_gen_collector_receiver.h
 		csp_solver_lf_dsg_collector_receiver.h
