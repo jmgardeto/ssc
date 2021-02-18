@@ -42,6 +42,7 @@ OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "csp_solver_pc_sco2.h"
 #include "csp_solver_two_tank_tes.h"
 #include "csp_solver_tou_block_schedules.h"
+#include "csp_solver_cavity_receiver.h"
 
 #include "csp_system_costs.h"
 
@@ -625,7 +626,18 @@ public:
 
 	void exec() override
 	{
-		// Weather reader
+
+        C_cavity_receiver c_cav_rec;
+        c_cav_rec.init();
+
+
+
+
+
+
+
+
+        // Weather reader
 		C_csp_weatherreader weather_reader;
 		if (is_assigned("solar_resource_file")){
 			weather_reader.m_weather_data_provider = make_shared<weatherfile>(as_string("solar_resource_file"));

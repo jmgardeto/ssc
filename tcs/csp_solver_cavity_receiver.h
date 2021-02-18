@@ -31,11 +31,53 @@ OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 class C_cavity_receiver : public C_pt_receiver
 {
-	// The steady-state receiver (as opposed to the transient, for example)
+public:
+
+    class C_rec_surface
+    {
+    public:
+        util::matrix_t<double> vertices;    // (nr, nc) -> (vertices, xyx)
+        double e_size;
+        size_t type;
+        bool is_active_surf;
+
+        C_rec_surface()
+        {
+            e_size = 2.5;
+        }
+    };
+
+    enum surf_order
+    {
+        PANEL1,
+        PANEL2,
+        PANEL3,
+        PANEL4,
+        FLOOR,
+        COVER,
+        TOPLIP,
+        BOTLIP,
+        APERTURE
+    };
 
 private:
 
-	double abce;
+    double receiverHeight; //[m] Receiver opening height in meters
+    double receiverWidth; //[m] Reciever opening width in meters
+    //double topLipHeight;  //[m] Height of top lip in meters
+    //double botLipHeight;  //[m] Height of bottom lip in meters
+    double e_act_sol;     //[-] Absorbtivity in short wave range for active surfaces
+    double e_pass_sol;    //[-] Absorbtivity in short wave range for passive surfaces
+    double e_act_therm;   //[-] Emissivity in long wave range for active surfaces
+    double e_pass_therm;  //[-] Emissivity in long wave range for passive surfaces
+    //double T_HTFin;       // Inlet heat transfer fluid temperature
+    //double T_HTFout;      // Outlet heat transfer fluid temperature
+    //double T_inf;         // Temperature of surroundings
+    //double UA_elemental;  // Specified conductance from HTF to each element
+    //double flux_elemental;// Specified incident solar flux on each element
+    //double h;             // Convective heat transfer coefficients per element
+
+    std::vector<C_rec_surface> mv_rec_surfs;
 
 public:
 
@@ -63,6 +105,17 @@ public:
 
 	virtual double area_proj();
 
+    void genOctCavity(double height /*m*/, double width /*m*/);
+
+    void meshGeometry();
+
+    void meshMapped(const util::matrix_t<double>& poly, double elemSize);
+
+    void crossproduct(const util::matrix_t<double>&, const util::matrix_t<double>&, util::matrix_t<double>& cross);
+
+    void norm3Dvect(const util::matrix_t<double>&, util::matrix_t<double>& norm_vect);
+
+    double dotprod3D(const util::matrix_t<double>&, const util::matrix_t<double>&);
 };
 
 #endif // __csp_solver_cavity_receiver_
