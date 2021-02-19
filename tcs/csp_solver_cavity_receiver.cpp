@@ -222,6 +222,8 @@ void C_cavity_receiver::meshMapped(const util::matrix_t<double>& poly, double el
     size_t n_verts = poly.nrows();
     size_t n_dims = poly.ncols();
 
+    util::matrix_t<double> less1_0(1, 3, std::numeric_limits<double>::quiet_NaN());
+    util::matrix_t<double> n_hat;
     if (n_dims == 3) {
 
         // Test for coplanar vertices
@@ -229,7 +231,6 @@ void C_cavity_receiver::meshMapped(const util::matrix_t<double>& poly, double el
             throw(C_csp_exception("meshMapped requires 4 vertices"));
         }
         else {
-            util::matrix_t<double> less1_0(1, 3, std::numeric_limits<double>::quiet_NaN());
             util::matrix_t<double> less2_0(1, 3, std::numeric_limits<double>::quiet_NaN());
             for (size_t i = 0; i < 3; i++) {
                 less1_0(0, i) = poly(1, i) - poly(0, i);
@@ -237,7 +238,6 @@ void C_cavity_receiver::meshMapped(const util::matrix_t<double>& poly, double el
             }
             util::matrix_t<double> n;
             crossproduct(less1_0, less2_0, n);
-            util::matrix_t<double> n_hat;
             norm3Dvect(n, n_hat);
             double volume = 0.0;
             util::matrix_t<double> diff_local(1, 3, std::numeric_limits<double>::quiet_NaN());
@@ -257,6 +257,32 @@ void C_cavity_receiver::meshMapped(const util::matrix_t<double>& poly, double el
     else {
         throw(C_csp_exception("meshMapped requires 3 dimensions for a vortex"));
     }
+
+    util::matrix_t<double> center;
+    ave_columns(poly, center);
+
+    to2D(poly, center, n_hat, less1_0);
+
+    // % convert to a 2D coordinate system
+      //  [POLY2D, ~] = to2D(POLY, center, nHat, (POLY(2, :) - POLY(1, :)));
+
+
+    return;
+}
+
+void C_cavity_receiver::to2D(const util::matrix_t<double>& poly, const util::matrix_t<double>& center,
+    const util::matrix_t<double>& normal, const util::matrix_t<double>& xaxis)
+{
+    size_t n = poly.nrows();
+
+    util::matrix_t<double> nHat;
+    norm3Dvect(normal, nHat);
+
+    util::matrix_t<double> xHat;
+    norm3Dvect(xaxis, xHat);
+
+    util::matrix_t<double> yHat;
+    crossproduct(nHat, xHat, yHat);
 
     return;
 }
@@ -281,6 +307,26 @@ void C_cavity_receiver::norm3Dvect(const util::matrix_t<double>& vector_in, util
     double magnitude = std::sqrt(std::pow(vector_in(0,0),2) + std::pow(vector_in(0,1),2) + std::pow(vector_in(0,2),2));
     for (size_t i = 0; i < 3; i++) {
         norm_vect(0, i) = vector_in(0, i) / magnitude;
+    }
+}
+
+void C_cavity_receiver::sumcolumns(const util::matrix_t<double>& a, util::matrix_t<double>& summed)
+{
+    summed.resize_fill(1, 3, 0.0);
+
+    for (size_t i = 0; i < a.nrows(); i++) {
+        for (size_t j = 0; j < 3; j++) {
+            summed(0, j) += a(i, j);
+        }
+    }
+}
+
+void C_cavity_receiver::ave_columns(const util::matrix_t<double>& a, util::matrix_t<double>& averaged)
+{
+    double nrows = (double)a.nrows();
+    sumcolumns(a, averaged);
+    for (size_t i = 0; i < 3; i++) {
+        averaged(0, i) /= nrows;
     }
 }
 

@@ -116,6 +116,13 @@ public:
     void norm3Dvect(const util::matrix_t<double>&, util::matrix_t<double>& norm_vect);
 
     double dotprod3D(const util::matrix_t<double>&, const util::matrix_t<double>&);
+
+    void sumcolumns(const util::matrix_t<double>&, util::matrix_t<double>&);
+
+    void ave_columns(const util::matrix_t<double>&, util::matrix_t<double>&);
+
+    void to2D(const util::matrix_t<double>& poly, const util::matrix_t<double>& center,
+        const util::matrix_t<double>& normal, const util::matrix_t<double>& xaxis);
 };
 
 #endif // __csp_solver_cavity_receiver_
