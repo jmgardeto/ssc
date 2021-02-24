@@ -27,6 +27,7 @@ OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 #include "Ambient.h"
 #include "definitions.h"
+#include <math.h>
 
 C_cavity_receiver::C_cavity_receiver()
 {
@@ -151,6 +152,10 @@ void C_cavity_receiver::meshGeometry()
         elemsFloor, elemsCover, elemsTopLip, elemsBotLip, elemsApert] = meshGeometry(elemSizes, meshTypes, ...
             PANEL1, PANEL2, PANEL3, PANEL4, FLOOR, COVER, TOPLIP, BOTLIP, APERTURE);*/
 
+    vector<util::matrix_t<double>> v_nodes;
+    vector<util::matrix_t<double>> v_elems;
+
+    int lastNodeID = 0;
 
     for (size_t i = 0; i < mv_rec_surfs.size(); i++)
     {
@@ -158,30 +163,38 @@ void C_cavity_receiver::meshGeometry()
         double elemSize = mv_rec_surfs[i].e_size;
         size_t type = mv_rec_surfs[i].type;
 
+        util::matrix_t<double> nodes;
+        util::matrix_t<double> elems;
         if (std::isnan(surf(0, 0))) {
 
-            // nodes
-            // varargout
-
-            continue;
+            nodes.resize_fill(1,1,std::numeric_limits<double>::quiet_NaN());
+            elems.resize_fill(1,1,std::numeric_limits<double>::quiet_NaN());
         }
         else {
             if (type == 0) {
                 // Mesh with triangles
-                double a = 1.23;
+                meshPolygon(surf, elemSize);
             }
             else if (type == 1) {
                 // Mesh with quads
-                meshMapped(surf, elemSize);
-                //[nodes{ i }, elems] = meshMapped(SURF, elemSize);
+                meshMapped(surf, elemSize, nodes, elems);
+                v_nodes.push_back(nodes);
             }
             else {
                 // Mesh as a single element
+                v_nodes.push_back(surf);
+                throw(C_csp_exception("afajf Not Finished"));
+                /*nodes{ i } = SURF;
+                elems = 1:size(SURF, 1);*/
+
                 double c = 4.6;
             }
         }
 
         // Shift node IDs to account for previous element sets
+        add_constant_to_each_element(lastNodeID, elems);
+        v_elems.push_back(elems);
+        lastNodeID = lastNodeID + v_nodes[i].nrows();
     }
 
 
@@ -213,10 +226,316 @@ void C_cavity_receiver::meshGeometry()
     return;
 }
 
-void C_cavity_receiver::meshMapped(const util::matrix_t<double>& poly, double elemSize)
+void C_cavity_receiver::meshPolygon(const util::matrix_t<double>& poly, double elemSize)
 {
     double almostZero = 1.E-7;
-    bool geom3D = true;
+
+    // Confirm correct inputs
+    size_t n_verts = poly.nrows();
+    size_t n_dims = poly.ncols();
+
+    util::matrix_t<double> nHat;
+    util::matrix_t<double> less1_0(1, 3, std::numeric_limits<double>::quiet_NaN());
+    if (n_dims == 3) {
+
+        if (n_verts < 3) {
+            throw(C_csp_exception("meshPolygon requires at least 3 vertices"));
+        }
+
+        // test for coplanar vertices
+        util::matrix_t<double> poly0 = poly.row(0);
+        util::matrix_t<double> poly1 = poly.row(1);
+        util::matrix_t<double> poly2 = poly.row(2);
+
+        util::matrix_t<double> less2_0(1, 3, std::numeric_limits<double>::quiet_NaN());
+
+        diffrows(poly2, poly1, less2_0);
+        diffrows(poly1, poly0, less1_0);
+
+        util::matrix_t<double> n;
+        crossproduct(less1_0, less2_0, n);
+
+        norm3Dvect(n, nHat);
+
+        if (n_verts > 3) { // check that points are planar
+
+            double volume = 0.0;
+            util::matrix_t<double> diff_local(1, 3, std::numeric_limits<double>::quiet_NaN());
+            // Only need to check points after the first 3
+            for (size_t i = 3; i < n_verts; i++) {
+                // the triple product of any combination of vertices must be zero for the polygon to be planar
+                // only need to check after first three points used to calculate the normal
+                for (size_t j = 0; j < 3; j++) {
+                    diff_local(0, j) = poly(i, j) - poly(0, j);
+                }
+                volume = std::abs(dotprod3D(n, diff_local));
+
+                if (volume > almostZero) {
+                    throw(C_csp_exception("meshPolygon polygon vertices not coplanar"));
+                }
+            }
+        }
+    }
+    else {
+        throw(C_csp_exception("meshMapped requires 3 dimensions for a vortex"));
+    }
+
+    util::matrix_t<double> center;
+    ave_columns(poly, center);
+
+    util::matrix_t<double> poly_2D;
+    util::matrix_t<double> poly_rt;
+    to2D(poly, center, nHat, less1_0, poly_2D, poly_rt);
+
+    util::matrix_t<double> max_vect;
+    util::matrix_t<double> min_vect;
+    min_max_vects_from_columns(poly_2D, max_vect, min_vect);
+
+    size_t n_cols = poly_2D.ncols();
+    util::matrix_t<double> bbox(2, n_cols, std::numeric_limits<double>::quiet_NaN());
+    for (size_t i = 0; i < n_cols; i++) {
+        bbox(0, i) = min_vect(0, i);
+        bbox(1, i) = max_vect(0, i);
+    }
+
+    util::matrix_t<double> max_less_min;
+    diffrows(max_vect, min_vect, max_less_min);
+    double maxDim = max_row_value(max_less_min);
+
+    if (maxDim / elemSize < 3 || maxDim / elemSize > 30) {
+        throw(C_csp_exception("meshPolygon: Element size not within the required range"));
+    }
+
+    // ????
+    //fd = @(p)(pointToPoly(p, POLY2D));% define distance function
+
+    // evenly distribute mesh points on edges
+    util::matrix_t<double> pfix_local = poly_2D;
+    util::matrix_t<double> pfix;
+    for (size_t j = 0; j < n_verts; j++) {
+
+        util::matrix_t<double> pointA = poly_2D.row(j);
+        util::matrix_t<double> pointB;
+        if (j < n_verts - 1) {
+            pointB = poly_2D.row(j+1);
+        }
+        else{
+            pointB = poly_2D.row(0);
+        }
+
+        util::matrix_t<double> BlessA;
+        diffrows(pointB, pointA, BlessA);
+        double edgeLength = mag_vect(BlessA);
+
+        // Determine number of elements on each edge
+        int edgeDivs = max(1, (int)std::round(edgeLength / elemSize));
+
+        // divide up edges into mesh points
+        if (edgeDivs > 1) {
+            util::matrix_t<double> AtoB;
+            scale_vect(BlessA, 1./edgeLength, AtoB);
+            double segment = edgeLength / (double)edgeDivs;
+
+            util::matrix_t<double> newPoints(edgeDivs - 1, 2, 0.0);
+
+            for (size_t i = 0; i < edgeDivs - 1; i++) {
+                for (size_t k = 0; k < 2; k++) {
+                    newPoints(i, k) = pointA(0, k) + (i + 1) * segment * AtoB(0, k);
+                }
+            }
+
+            size_t n_row_pfix = pfix_local.nrows();
+            size_t n_row_newPoints = newPoints.nrows();
+            size_t n_row_pfix_new = n_row_pfix + n_row_newPoints;
+
+            pfix.resize_fill(n_row_pfix_new, 2, std::numeric_limits<double>::quiet_NaN());
+            for (size_t i = 0; i < n_row_pfix; i++) {
+                for (size_t k = 0; k < 2; k++) {
+                    pfix(i,k) = pfix_local(i,k);
+                }
+            }
+
+            for (size_t i = 0; i < n_row_newPoints; i++) {
+                for (size_t k = 0; k < 2; k++) {
+                    pfix(n_row_pfix + i,k) = newPoints(i,k);
+                }
+            }
+        }
+        else {
+            pfix = pfix_local;
+        }
+    }
+
+    // Call the mesh engine
+    triMesh2D(elemSize, bbox, pfix, poly_2D);
+
+    //% call the mesh engine
+    //    [nodes2D, triangles] = triMesh2D(fd, @huniform, elemSize, bbox, pfix);
+
+
+}
+
+void C_cavity_receiver::triMesh2D(double h0, const util::matrix_t<double>& bbox, const util::matrix_t<double>& pfix,
+    const util::matrix_t<double>& poly_2D)
+{
+    // function settings
+    double dptol = .001;
+    double ttol = .1;
+    double Fscale = 1.2;
+    double deltat = .2;
+    double geps = .001 * h0;
+    double deps = sqrt(pow(2., -52)) * h0;
+
+
+    // 1. Create initial distribution in bounding box(equilateral triangles)
+    std::vector<double> x_mg;
+    for (double ix = bbox(0, 0); ix < bbox(1, 0); ix = ix + h0) {
+        x_mg.push_back(ix);
+    }
+    std::vector<double> y_mg;
+    for (double iy = bbox(0, 1); iy < bbox(1, 1); iy = iy + h0 * sqrt(3) / 2.) {
+        y_mg.push_back(iy);
+    }
+
+    size_t n_x_mg = x_mg.size();
+    size_t n_y_mg = y_mg.size();
+
+    util::matrix_t<double> x(n_y_mg, n_x_mg, std::numeric_limits<double>::quiet_NaN());
+    util::matrix_t<double> y(n_y_mg, n_x_mg, std::numeric_limits<double>::quiet_NaN());
+    for (size_t i = 0; i < n_y_mg; i++) {
+        for (size_t j = 0; j < n_x_mg; j++) {
+            x(i,j) = x_mg[j];
+            y(i,j) = y_mg[i];
+        }
+    }
+
+    for (size_t i = 0; i < x.nrows(); i++) {
+        if (i % 2 == 1) {
+            for (size_t j = 0; j < x.ncols(); j++) {
+                x(i, j) = x(i, j) + h0 / 2.0;       // Shift odd (even in 1-based indices) rows
+            }
+        }
+    }
+
+    util::matrix_t<double> p(n_y_mg*n_x_mg, 2, std::numeric_limits<double>::quiet_NaN());
+    for(size_t j = 0; j < x.ncols(); j++){
+        for (size_t i = 0; i < x.nrows(); i++) {
+            p(j*x.nrows() + i, 0) = x(i,j);
+            p(j*x.nrows() + i, 1) = y(i,j);
+        }
+    }
+
+    // 2. Remove points outside the region, apply the rejection method
+    pointToPoly(p, poly_2D);
+
+    return;
+}
+
+double C_cavity_receiver::pointToLine(const util::matrix_t<double>& p, const util::matrix_t<double>& a,
+    const util::matrix_t<double>& b)
+{
+    // find the distance between point pand line segment a - b
+    double x = p(0,0);
+    double y = p(0,1);
+    double x1 = a(0,0);
+    double y1 = a(0,1);
+    double x2 = b(0,0);
+    double y2 = b(0,1);
+
+    double A = x - x1;
+    double B = y - y1;
+    double C = x2 - x1;
+    double D = y2 - y1;
+
+    double dott = A*C + B*D;
+    double len_sq = C*C + D*D;
+
+    double param = -1.0;
+    if (len_sq != 0) {
+        param = dott / len_sq;
+    }
+
+    double xx = std::numeric_limits<double>::quiet_NaN();
+    double yy = std::numeric_limits<double>::quiet_NaN();
+
+    if (param < 0) {
+        xx = x1;
+        yy = y1;
+    }
+    else if (param > 1) {
+        xx = x2;
+        yy = y2;
+    }
+    else {
+        xx = x1 + param*C;
+        yy = y1 + param*D;
+    }
+
+    double dx = x - xx;
+    double dy = y - yy;
+
+    double val = sqrt(dx*dx + dy*dy);
+    return val;
+}
+
+void C_cavity_receiver::pointToPoly(const util::matrix_t<double>& p, const util::matrix_t<double>& POLY)
+{
+    int n = p.nrows();
+    int m = p.ncols();
+    int N = POLY.nrows();
+    int M = POLY.ncols();
+
+    if (m == 2 && M == 2) {
+
+        util::matrix_t<double> d(n, 1, 0.0);
+
+        for (size_t i = 0; i < n; i++) {
+
+            util::matrix_t<double> D(N, 1, 0.0);
+
+            for (size_t j = 0; j < N; j++) {
+                util::matrix_t<double> a = POLY.row(j);
+
+                util::matrix_t<double> b;
+                if (j < N-1) {
+                    b = POLY.row(j+1);
+                }
+                else {
+                    b = POLY.row(0);
+                }
+
+                D(j,0) = std::abs(pointToLine(p.row(i), a, b));
+            }
+
+            d(i,0) = min_val_first_colum(D);
+        }
+
+        double abc = 1.23;
+        // inpolygon
+    }
+    else {
+        throw(C_csp_exception("pointToPoly: incorrect dimensions"));
+    }
+
+    /*if (m == 2) && (M == 2)
+
+        for i = 1:n
+
+        end
+
+            IN = inpolygon(p(:, 1), p(:, 2), POLY(:, 1), POLY(:, 2));
+        d = d.*(-1 * IN + ~IN);
+
+    else
+        error('Incorrect dimensions.');
+    end*/
+
+}
+
+void C_cavity_receiver::meshMapped(const util::matrix_t<double>& poly, double elemSize,
+    util::matrix_t<double>& nodes, util::matrix_t<double>& quads)
+{
+    double almostZero = 1.E-7;
 
     // Confirm correct inputs
     size_t n_verts = poly.nrows();
@@ -241,8 +560,9 @@ void C_cavity_receiver::meshMapped(const util::matrix_t<double>& poly, double el
             norm3Dvect(n, n_hat);
             double volume = 0.0;
             util::matrix_t<double> diff_local(1, 3, std::numeric_limits<double>::quiet_NaN());
-            for (size_t i = 0; i < 4; i++) {
+            for (size_t i = 3; i < n_verts; i++) {
                 // the triple product of any combination of vertices must be zero for the polygon to be planar
+                // only need to check after first three points used to calculate the normal
                 for (size_t j = 0; j < 3; j++) {
                     diff_local(0, j) = poly(i, j) - poly(0, j);
                 }
@@ -261,17 +581,135 @@ void C_cavity_receiver::meshMapped(const util::matrix_t<double>& poly, double el
     util::matrix_t<double> center;
     ave_columns(poly, center);
 
-    to2D(poly, center, n_hat, less1_0);
+    util::matrix_t<double> poly_2D;
+    util::matrix_t<double> poly_rt;
+    to2D(poly, center, n_hat, less1_0, poly_2D, poly_rt);
 
-    // % convert to a 2D coordinate system
-      //  [POLY2D, ~] = to2D(POLY, center, nHat, (POLY(2, :) - POLY(1, :)));
+    util::matrix_t<double> nodes2D;
+    map(poly_2D, elemSize, nodes2D, quads);
 
+    to3D(nodes2D, center, n_hat, less1_0, nodes);
+
+    return;
+}
+
+void C_cavity_receiver::to3D(const util::matrix_t<double>& poly_xy, const util::matrix_t<double>& origin,
+    const util::matrix_t<double>& normal, const util::matrix_t<double>& xaxis,
+    util::matrix_t<double>& poly3d)
+{
+    size_t n = poly_xy.nrows();     // number of points to process
+
+    util::matrix_t<double> nHat;
+    norm3Dvect(normal, nHat);
+
+    util::matrix_t<double> xHat;
+    norm3Dvect(xaxis, xHat);
+
+    util::matrix_t<double> yHat;
+    crossproduct(nHat, xHat, yHat);
+
+    poly3d.resize_fill(n, 3, 0.0);
+    for (size_t i = 0; i < n; i++){
+        for (size_t j = 0; j < 3; j++) {
+            poly3d(i,j) = origin(0,j) + xHat(0,j)*poly_xy(i,0) + yHat(0,j)*poly_xy(i,1);
+        }
+    }
+
+    return;
+}
+
+void C_cavity_receiver::map(const util::matrix_t<double>& poly2D, double elemSize,
+    util::matrix_t<double>& nodes, util::matrix_t<double>& quads)
+{
+    util::matrix_t<double> A = poly2D.row(0);
+    util::matrix_t<double> B = poly2D.row(1);
+    util::matrix_t<double> C = poly2D.row(2);
+    util::matrix_t<double> D = poly2D.row(3);
+
+    util::matrix_t<double> AtoB;
+    diffrows(B, A, AtoB);
+    double lengthAB = mag_vect(AtoB);
+
+    util::matrix_t<double> BtoC;
+    diffrows(C, B, BtoC);
+    double lengthBC = mag_vect(BtoC);
+
+    util::matrix_t<double> CtoD;
+    diffrows(D, C, CtoD);
+    double lengthCD = mag_vect(CtoD);
+
+    util::matrix_t<double> AtoD;
+    diffrows(D, A, AtoD);
+    double lengthDA = mag_vect(AtoD);
+
+    double maxDim = max({ lengthAB, lengthBC, lengthCD, lengthDA });
+
+    // test for a reasonable element size
+    if (maxDim / elemSize < 0.5 || maxDim / elemSize > 250) {
+        throw(C_csp_exception("Element size not within the required range"));
+    }
+
+    // find reasonable # of elements per edge for mapping
+    int elemsM = std::max(1, (int) std::round(0.5/elemSize*(lengthAB + lengthCD)));
+    int elemsN = std::max(1, (int) std::round(0.5/elemSize*(lengthBC + lengthDA)));
+
+    // initialize nodeand element arrays
+    nodes.resize_fill((elemsM+1)*(elemsN+1), 2, 0.0);
+    quads.resize_fill(elemsM*elemsN, 4, 0.0);
+
+    int nodeID = -1;     // last used node index - set to -1 for C++ 0-based index
+    int elemID = -1;     // last used element index - set to -1 for C++ 0-based index
+
+    // Matlab code also starts at index 0
+    for (size_t m = 0; m < elemsM + 1; m++) {
+        // create bridge EF between AB and CD
+        util::matrix_t<double> scaledAtoB;
+        scale_vect(AtoB, m/(double)elemsM, scaledAtoB);
+        util::matrix_t<double> E;
+        add_vect_rows(A, scaledAtoB, E);
+
+        util::matrix_t<double> scaledCtoD;
+        scale_vect(CtoD, m/(double)elemsM, scaledCtoD);
+        util::matrix_t<double> F;
+        diffrows(D, scaledCtoD, F);
+
+        util::matrix_t<double> EtoF;
+        diffrows(F, E, EtoF);
+
+        // Matlab code also starts at index 0
+        for (size_t n = 0; n < elemsN + 1; n++) {
+            // walk along bridge EF defining nodes
+            nodeID++;
+            util::matrix_t<double> scaledEtoF;
+            scale_vect(EtoF, n/(double)elemsN, scaledEtoF);
+            util::matrix_t<double> E_plus_scaledEtoF;
+            add_vect_rows(E, scaledEtoF, E_plus_scaledEtoF);
+
+            for (size_t i = 0; i < E_plus_scaledEtoF.ncols(); i++) {
+                nodes(nodeID, i) = E_plus_scaledEtoF(0, i);
+            }
+
+            if (m > 0 && n > 0) { // then define new element
+                elemID++;
+
+                // Retrieve nodes around element in CCW direction
+                // these MUST go around the element in order(CW or CCW) in
+                // order to work correctly with viewFactor(...)
+                quads(elemID, 0) = nodeID - elemsN - 2;
+                quads(elemID, 1) = nodeID - 1;
+                quads(elemID, 2) = nodeID;
+                quads(elemID, 3) = nodeID - elemsN - 1;
+            }
+
+        }
+    }
 
     return;
 }
 
 void C_cavity_receiver::to2D(const util::matrix_t<double>& poly, const util::matrix_t<double>& center,
-    const util::matrix_t<double>& normal, const util::matrix_t<double>& xaxis)
+    const util::matrix_t<double>& normal, const util::matrix_t<double>& xaxis,
+    util::matrix_t<double>& poly_xy, util::matrix_t<double>& poly_rt)
 {
     size_t n = poly.nrows();
 
@@ -284,12 +722,51 @@ void C_cavity_receiver::to2D(const util::matrix_t<double>& poly, const util::mat
     util::matrix_t<double> yHat;
     crossproduct(nHat, xHat, yHat);
 
+    poly_xy.resize_fill(n, 2, 0.0);
+    poly_rt.resize_fill(n, 2, 0.0);
+
+    for (size_t i = 0; i < n; i++) {
+        util::matrix_t<double> point = poly.row(i);
+        util::matrix_t<double> arm(1, 3);
+        for (size_t j = 0; j < 3; j++) {
+            arm(0,j) = point(0,j) - center(0,j);
+        }
+        double radius = mag_vect(arm);
+        double xComp = dotprod3D(arm, xHat);    // x coordinate in 2D CS
+        double yComp = dotprod3D(arm, yHat);    // y coordinate in 2D CS
+        double theta = atan2(yComp, xComp);     //
+        if (theta < 0.0) {
+            theta = theta + 2. * CSP::pi;
+        }
+        poly_xy(i, 0) = xComp;
+        poly_xy(i, 1) = yComp;
+        poly_rt(i, 0) = radius;
+        poly_rt(i, 1) = theta;
+    }
+
     return;
+}
+
+void C_cavity_receiver::add_constant_to_each_element(double val, util::matrix_t<double>& a)
+{
+    for (size_t i = 0; i < a.nrows(); i++) {
+        for (size_t j = 0; j < a.ncols(); j++) {
+            a(i,j) += val;
+        }
+    }
 }
 
 double C_cavity_receiver::dotprod3D(const util::matrix_t<double>& a, const util::matrix_t<double>& b)
 {
     return a(0,0)*b(0,0) + a(0,1)*b(0,1) + a(0,2)*b(0,2);
+}
+
+void C_cavity_receiver::scale_vect(const util::matrix_t<double>& a, double scale, util::matrix_t<double>& out_vect)
+{
+    out_vect = a;
+    for (size_t i = 0; i < a.ncols(); i++) {
+        out_vect(0,i) = a(0,i)*scale;
+    }
 }
 
 void C_cavity_receiver::crossproduct(const util::matrix_t<double>& a_vert, const util::matrix_t<double>& b_vert, util::matrix_t<double>& cross)
@@ -304,10 +781,22 @@ void C_cavity_receiver::crossproduct(const util::matrix_t<double>& a_vert, const
 void C_cavity_receiver::norm3Dvect(const util::matrix_t<double>& vector_in, util::matrix_t<double>& norm_vect)
 {
     norm_vect.resize_fill(1, 3, std::numeric_limits<double>::quiet_NaN());
-    double magnitude = std::sqrt(std::pow(vector_in(0,0),2) + std::pow(vector_in(0,1),2) + std::pow(vector_in(0,2),2));
+    double magnitude = mag_vect(vector_in);
     for (size_t i = 0; i < 3; i++) {
         norm_vect(0, i) = vector_in(0, i) / magnitude;
     }
+}
+
+double C_cavity_receiver::mag_vect(const util::matrix_t<double>& vector_in)
+{
+    double sum_of_sq = 0.0;
+    for (size_t i = 0; i < vector_in.ncols(); i++) {
+        sum_of_sq += std::pow(vector_in(0, i), 2);
+    }
+
+    return std::sqrt(sum_of_sq);
+
+    //return std::sqrt(std::pow(vector_in(0, 0), 2) + std::pow(vector_in(0, 1), 2) + std::pow(vector_in(0, 2), 2));
 }
 
 void C_cavity_receiver::sumcolumns(const util::matrix_t<double>& a, util::matrix_t<double>& summed)
@@ -321,6 +810,22 @@ void C_cavity_receiver::sumcolumns(const util::matrix_t<double>& a, util::matrix
     }
 }
 
+void C_cavity_receiver::diffrows(const util::matrix_t<double>& a, const util::matrix_t<double>& b, util::matrix_t<double>& a_less_b)
+{
+    a_less_b.resize_fill(1, a.ncols(), std::numeric_limits<double>::quiet_NaN());
+    for (size_t i = 0; i < a.ncols(); i++) {
+        a_less_b(0, i) = a(0, i) - b(0, i);
+    }
+}
+
+void C_cavity_receiver::add_vect_rows(const util::matrix_t<double>& a, const util::matrix_t<double>& b, util::matrix_t<double>& a_plus_b)
+{
+    a_plus_b.resize_fill(1, a.ncols(), std::numeric_limits<double>::quiet_NaN());
+    for (size_t i = 0; i < a.ncols(); i++) {
+        a_plus_b(0,i) = a(0,i) + b(0,i);
+    }
+}
+
 void C_cavity_receiver::ave_columns(const util::matrix_t<double>& a, util::matrix_t<double>& averaged)
 {
     double nrows = (double)a.nrows();
@@ -328,6 +833,38 @@ void C_cavity_receiver::ave_columns(const util::matrix_t<double>& a, util::matri
     for (size_t i = 0; i < 3; i++) {
         averaged(0, i) /= nrows;
     }
+}
+
+double C_cavity_receiver::max_row_value(const util::matrix_t<double>& a)
+{
+    double maxval = a(0, 0);
+    for (size_t i = 1; i < a.ncols(); i++) {
+        maxval = max(maxval, a(0,i));
+    }
+    return maxval;
+}
+
+double C_cavity_receiver::min_val_first_colum(const util::matrix_t<double>& a)
+{
+    double minval = a(0, 0);
+    for (size_t i = 1; i < a.nrows(); i++) {
+        minval = min(minval, a(i, 0));
+    }
+    return minval;
+}
+
+void C_cavity_receiver::min_max_vects_from_columns(const util::matrix_t<double>& a, util::matrix_t<double>& max_vect, util::matrix_t<double>& min_vect)
+{
+    size_t ncols = a.ncols();
+    max_vect = a.row(0);
+    min_vect = a.row(0);
+    for (size_t i = 1; i < a.nrows(); i++) {
+        for (size_t j = 0; j < ncols; j++) {
+            max_vect(0,j) = max(max_vect(0,j), a(i,j));
+            min_vect(0,j) = min(min_vect(0,j), a(i,j));
+        }
+    }
+
 }
 
 void C_cavity_receiver::init()

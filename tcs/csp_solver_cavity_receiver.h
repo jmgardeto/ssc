@@ -109,20 +109,56 @@ public:
 
     void meshGeometry();
 
-    void meshMapped(const util::matrix_t<double>& poly, double elemSize);
+    void meshMapped(const util::matrix_t<double>& poly, double elemSize,
+        util::matrix_t<double>& nodes, util::matrix_t<double>& quads);
+
+    void meshPolygon(const util::matrix_t<double>& poly, double elemSize);
 
     void crossproduct(const util::matrix_t<double>&, const util::matrix_t<double>&, util::matrix_t<double>& cross);
 
     void norm3Dvect(const util::matrix_t<double>&, util::matrix_t<double>& norm_vect);
 
+    double mag_vect(const util::matrix_t<double>& vector_in);
+
     double dotprod3D(const util::matrix_t<double>&, const util::matrix_t<double>&);
 
     void sumcolumns(const util::matrix_t<double>&, util::matrix_t<double>&);
 
+    void diffrows(const util::matrix_t<double>& a, const util::matrix_t<double>& b, util::matrix_t<double>& a_less_b);
+
+    void add_vect_rows(const util::matrix_t<double>& a, const util::matrix_t<double>& b, util::matrix_t<double>& a_plus_b);
+
+    void scale_vect(const util::matrix_t<double>& a, double scale, util::matrix_t<double>& out_vect);
+
+    void add_constant_to_each_element(double val, util::matrix_t<double>& a);
+
     void ave_columns(const util::matrix_t<double>&, util::matrix_t<double>&);
 
+    double max_row_value(const util::matrix_t<double>& a);
+
+    double min_val_first_colum(const util::matrix_t<double>& a);
+
+    void min_max_vects_from_columns(const util::matrix_t<double>& a, util::matrix_t<double>& max_vect, util::matrix_t<double>& min_vect);
+
     void to2D(const util::matrix_t<double>& poly, const util::matrix_t<double>& center,
-        const util::matrix_t<double>& normal, const util::matrix_t<double>& xaxis);
+        const util::matrix_t<double>& normal, const util::matrix_t<double>& xaxis,
+        util::matrix_t<double>& poly_xy, util::matrix_t<double>& poly_rt);
+
+    void map(const util::matrix_t<double>& poly2D, double elemSize,
+        util::matrix_t<double>& nodes, util::matrix_t<double>& quads);
+
+    void to3D(const util::matrix_t<double>& poly_xy, const util::matrix_t<double>& origin,
+        const util::matrix_t<double>& normal, const util::matrix_t<double>& xaxis,
+        util::matrix_t<double>& poly3d);
+
+    // triMesh2D(fd, fh, h0, bbox, pfix, varargin)
+    void triMesh2D(double h0, const util::matrix_t<double>& bbox, const util::matrix_t<double>& pfix,
+        const util::matrix_t<double>& poly_2D);
+
+    void pointToPoly(const util::matrix_t<double>& p, const util::matrix_t<double>& POLY);
+
+    double pointToLine(const util::matrix_t<double>& p, const util::matrix_t<double>& a,
+        const util::matrix_t<double>& b);
 };
 
 #endif // __csp_solver_cavity_receiver_
