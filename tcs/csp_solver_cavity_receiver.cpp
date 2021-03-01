@@ -29,6 +29,19 @@ OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "definitions.h"
 #include <math.h>
 
+bool sort_pair_ascending(pair<double,double> i, pair<double, double> j)
+{
+    if (i.first > j.first) {
+        return true;
+    }
+    else if (i.first == j.first && i.second > j.second) {
+        return true;
+    }
+    else {
+        return false;
+    }
+}
+
 C_cavity_receiver::C_cavity_receiver()
 {
 	
@@ -306,13 +319,12 @@ void C_cavity_receiver::meshPolygon(const util::matrix_t<double>& poly, double e
         throw(C_csp_exception("meshPolygon: Element size not within the required range"));
     }
 
-    // ????
-    //fd = @(p)(pointToPoly(p, POLY2D));% define distance function
-
     // evenly distribute mesh points on edges
     util::matrix_t<double> pfix_local = poly_2D;
-    util::matrix_t<double> pfix;
+    util::matrix_t<double> pfix = pfix_local;
     for (size_t j = 0; j < n_verts; j++) {
+
+        pfix_local = pfix;
 
         util::matrix_t<double> pointA = poly_2D.row(j);
         util::matrix_t<double> pointB;
@@ -348,13 +360,7 @@ void C_cavity_receiver::meshPolygon(const util::matrix_t<double>& poly, double e
             size_t n_row_newPoints = newPoints.nrows();
             size_t n_row_pfix_new = n_row_pfix + n_row_newPoints;
 
-            pfix.resize_fill(n_row_pfix_new, 2, std::numeric_limits<double>::quiet_NaN());
-            for (size_t i = 0; i < n_row_pfix; i++) {
-                for (size_t k = 0; k < 2; k++) {
-                    pfix(i,k) = pfix_local(i,k);
-                }
-            }
-
+            pfix.resize_preserve(n_row_pfix_new, 2, std::numeric_limits<double>::quiet_NaN());
             for (size_t i = 0; i < n_row_newPoints; i++) {
                 for (size_t k = 0; k < 2; k++) {
                     pfix(n_row_pfix + i,k) = newPoints(i,k);
@@ -426,7 +432,94 @@ void C_cavity_receiver::triMesh2D(double h0, const util::matrix_t<double>& bbox,
     }
 
     // 2. Remove points outside the region, apply the rejection method
-    pointToPoly(p, poly_2D);
+    util::matrix_t<double> d;
+    pointToPoly(p, poly_2D, d);
+
+    std::vector<size_t> i_p;
+    for (size_t i = 0; i < d.nrows(); i++) {
+        if (d(i, 0) + h0 / 2 < geps) {
+            i_p.push_back(i);
+        }
+    }
+
+    util::matrix_t<double> p_temp(i_p.size(), 2, std::numeric_limits<double>::quiet_NaN());
+    for (size_t k = 0; k < i_p.size(); k++) {
+        size_t i = i_p[k];
+        p_temp(k,0) = p(i,0);
+        p_temp(k,1) = p(i,1);
+    }
+    p = p_temp;
+
+    std::vector<size_t> i_p_include;
+    bool is_unique = true;
+    for (size_t i = 0; i < p.nrows(); i++) {
+        is_unique = true;
+        for (size_t k = 0; k < pfix.nrows(); k++) {
+            if (p(i, 0) == pfix(k, 0)) {
+                if (p(i, 1) == pfix(k, 1)) {
+                    is_unique = false;
+                    break;
+                }
+            }
+        }
+        if (is_unique) {
+            i_p_include.push_back(i);
+        }
+    }
+
+    size_t n_row_pfix = pfix.nrows();
+    size_t n_row_p = i_p_include.size();
+    size_t n_row_p_new = n_row_pfix + n_row_p;
+    p_temp = pfix;
+    p_temp.resize_preserve(n_row_p_new, pfix.ncols(), std::numeric_limits<double>::quiet_NaN());
+
+    for (size_t i = 0; i < i_p_include.size(); i++) {
+        p_temp(n_row_pfix + i, 0) = p(i_p_include[i],0);
+        p_temp(n_row_pfix + i, 1) = p(i_p_include[i],1);
+    }
+
+    p = p_temp;     // unordered
+
+    vector<pair<double, double>> v_pair_p;
+    for (size_t i = 0; i < p.nrows(); i++) {
+        v_pair_p.push_back(make_pair(p(i,0),p(i,1)));
+    }
+
+    // using modified sort() function to sort
+    sort(v_pair_p.rbegin(), v_pair_p.rend(), sort_pair_ascending);
+
+    for (size_t i = 0; i < p.nrows(); i++) {
+        p(i,0) = v_pair_p[i].first;
+        p(i, 1) = v_pair_p[i].second;
+    }
+
+    util::matrix_t<double> pold(p.nrows(), p.ncols(), std::numeric_limits<double>::quiet_NaN());
+    int count = 0;
+
+    while (true) {
+
+        // 3. Retriangulation by the Delaunay algorithm
+        pold = p;       // Save current positions
+
+    }
+
+    /*while true
+        % 3. Retriangulation by the Delaunay algorithm
+        if max(sqrt(sum((p - pold). ^ 2, 2)) / h0) > ttol% Any large movement ?
+            pold = p;% Save current positions
+            t = delaunayn(p);% List of triangles
+            pmid = (p(t(:, 1), :) + p(t(:, 2), :) + p(t(:, 3), :)) / 3; % Compute centroids
+            t = t(feval(fd, pmid, varargin{ : }) < -geps, :);% Keep interior triangles
+            % 4. Describe each bar by a unique pair of nodes
+            bars = [t(:, [1, 2]); t(:, [1, 3]); t(:, [2, 3])];% Interior bars duplicated
+            bars = unique(sort(bars, 2), 'rows');% Bars as node pairs
+            % 5. Graphical output of the current mesh
+            if plotFormation
+                trimesh(t, p(:, 1), p(:, 2), zeros(N, 1))
+                view(2); axis equal; axis off; drawnow
+                end
+                end*/
+
 
     return;
 }
@@ -478,7 +571,8 @@ double C_cavity_receiver::pointToLine(const util::matrix_t<double>& p, const uti
     return val;
 }
 
-void C_cavity_receiver::pointToPoly(const util::matrix_t<double>& p, const util::matrix_t<double>& POLY)
+void C_cavity_receiver::pointToPoly(const util::matrix_t<double>& p, const util::matrix_t<double>& POLY,
+    util::matrix_t<double>& d)
 {
     int n = p.nrows();
     int m = p.ncols();
@@ -487,7 +581,7 @@ void C_cavity_receiver::pointToPoly(const util::matrix_t<double>& p, const util:
 
     if (m == 2 && M == 2) {
 
-        util::matrix_t<double> d(n, 1, 0.0);
+        d.resize_fill(n, 1, 0.0);
 
         for (size_t i = 0; i < n; i++) {
 
@@ -511,26 +605,196 @@ void C_cavity_receiver::pointToPoly(const util::matrix_t<double>& p, const util:
         }
 
         double abc = 1.23;
-        // inpolygon
+        util::matrix_t<double> p_x = p.col(0);
+        util::matrix_t<double> p_y = p.col(1);
+
+        util::matrix_t<double> poly_x;
+        util::matrix_t<double> poly_y;
+
+        transpose_matrix_t(POLY.col(0), poly_x);
+        transpose_matrix_t(POLY.col(1), poly_y);
+
+        util::matrix_t<int> in;
+        inpolygon(p_x, p_y, poly_x, poly_y, in);
+
+        for (size_t i = 0; i < n; i++) {
+            d(i,0) *= (-1.0*in(i,0) + (double)(!in(i,0)));
+        }
     }
     else {
         throw(C_csp_exception("pointToPoly: incorrect dimensions"));
     }
-
-    /*if (m == 2) && (M == 2)
-
-        for i = 1:n
-
-        end
-
-            IN = inpolygon(p(:, 1), p(:, 2), POLY(:, 1), POLY(:, 2));
-        d = d.*(-1 * IN + ~IN);
-
-    else
-        error('Incorrect dimensions.');
-    end*/
-
 }
+
+void C_cavity_receiver::inpolygon(const util::matrix_t<double>& p_x, const util::matrix_t<double>& p_y,
+    const util::matrix_t<double>& poly_x, const util::matrix_t<double>& poly_y,
+    util::matrix_t<int>& is_in_polygon)
+{
+    util::matrix_t<double> x = p_x;
+    util::matrix_t<double> y = p_y;
+
+    // Last point in polygon should equal first
+    util::matrix_t<double> vx = poly_x;
+    util::matrix_t<double> vy = poly_y;
+    if (poly_x(poly_x.nrows() - 1, 0) != poly_x(0, 0) || poly_y(poly_y.nrows() - 1, 0)) {
+        vx.resize_preserve(poly_x.nrows()+1, 1, std::numeric_limits<double>::quiet_NaN());
+        vx(poly_x.nrows(),0) = poly_x(0,0);
+        vy.resize_preserve(poly_y.nrows()+1, 1, std::numeric_limits<double>::quiet_NaN());
+        vy(poly_y.nrows(),0) = poly_y(0,0);
+    }
+
+    size_t n_verts = vx.nrows();
+    size_t n_points = x.ncols();
+
+    util::matrix_t<double> xx(n_verts, n_points, std::numeric_limits<double>::quiet_NaN());
+    util::matrix_t<double> yy(n_verts, n_points, std::numeric_limits<double>::quiet_NaN());
+    util::matrix_t<double> v_vx(n_verts, n_points, std::numeric_limits<double>::quiet_NaN());
+    util::matrix_t<double> v_vy(n_verts, n_points, std::numeric_limits<double>::quiet_NaN());
+    for (size_t i = 0; i < n_verts; i++) {
+        for (size_t j = 0; j < n_points; j++) {
+            xx(i,j) = x(0,j);
+            yy(i,j) = y(0,j);
+            v_vx(i,j) = vx(i,0);
+            v_vy(i,j) = vy(i,0);
+        }
+    }
+
+    x = xx;
+    y = yy;
+    vx = v_vx;
+    vy = v_vy;
+
+    util::matrix_t<double> avx(n_verts - 1, 1, std::numeric_limits<double>::quiet_NaN());
+    util::matrix_t<double> avy(n_verts - 1, 1, std::numeric_limits<double>::quiet_NaN());
+    util::matrix_t<double> ScaleFactor(n_verts - 1, 1, std::numeric_limits<double>::quiet_NaN());
+
+    for (size_t i = 0; i < n_verts - 1; i++) {
+        avx(i,0) = std::abs(0.5*(vx(i,0) + vx(i+1,0)));
+        avy(i,0) = std::abs(0.5*(vy(i,0) + vy(i+1,0)));
+        ScaleFactor(i,0) = max(max(avx(i,0),avy(i,0)), avx(i,0)*avy(i,0));
+    }
+
+    for (size_t i = 0; i < n_verts; i++) {
+        for (size_t j = 0; j < n_points; j++) {
+            vx(i,j) -= x(i,j);
+            vy(i,j) -= y(i,j);
+        }
+    }
+
+    util::matrix_t<int> quad(n_verts, n_points, std::numeric_limits<double>::quiet_NaN());
+    bool posX, posY, negX, negY;
+    for (size_t i = 0; i < n_verts; i++) {
+        for (size_t j = 0; j < n_points; j++) {
+            posX = vx(i, j) > 1.E-10;
+            posY = vy(i, j) > 1.E-10;
+            negX = !posX;
+            negY = !posY;
+            quad(i,j) = (size_t)(negX && posY) + 2*(size_t)(negX && negY) + 3*(size_t)(posX && negY);
+        }
+    }
+
+    double scaledEps_base = sqrt(pow(2., -52)) * 3.0;
+    double scaledEps = std::numeric_limits<double>::quiet_NaN();
+
+
+    util::matrix_t<double> theCrossProd(n_verts-1, n_points, std::numeric_limits<double>::quiet_NaN());
+    util::matrix_t<double> dotProd(n_verts - 1, n_points, std::numeric_limits<double>::quiet_NaN());
+    util::matrix_t<int> signCrossProd(n_verts - 1, n_points, -99);
+    util::matrix_t<int> diffQuad(n_verts - 1, n_points, -99);
+    for (size_t i = 0; i < n_verts - 1; i++) {
+        for (size_t j = 0; j < n_points; j++) {
+
+            // Compute the sign() of the cross productand dot product of adjacent vertices.
+            theCrossProd(i,j) = vx(i,j)*vy(i+1,j) - vx(i+1,j)*vy(i,j);
+
+            scaledEps = ScaleFactor(i, 0) * scaledEps_base;
+            if (abs(theCrossProd(i, j)) < scaledEps) {
+                signCrossProd(i,j) = 0;
+            }
+            else if (theCrossProd(i, j) > 1.E-10) {
+                signCrossProd(i,j) = 1;
+            }
+            else if (theCrossProd(i, j) < -1.E-10) {
+                signCrossProd(i, j) = -1;
+            }
+            else {
+                signCrossProd(i, j) = 0;
+            }
+
+            dotProd(i,j) = vx(i,j)*vx(i+1,j) + vy(i,j)*vy(i+1,j);
+
+            diffQuad(i,j) = quad(i+1,j) - quad(i,j);
+
+            if (abs(diffQuad(i, j)) == 3) {
+                diffQuad(i,j) /= -3;
+            }
+            if (abs(diffQuad(i, j)) == 2) {
+                diffQuad(i,j) = 2 * signCrossProd(i,j);
+            }
+        }        
+    }
+
+    util::matrix_t<int> in(1, n_points, -1);
+
+    sum_int_columns(diffQuad, in);
+
+    util::matrix_t<int> on(1, n_points, -1);
+
+    size_t is_true = 0;
+    for (size_t j = 0; j < n_points; j++) {
+
+        if (in(0, j) != 0) {
+            in(0, j) = 1;
+        }
+        else {
+            in(0, j) = 0;
+        }
+
+        is_true = 0;
+        for (size_t i = 0; i < n_verts - 1; i++) {
+            if (signCrossProd(i, j) == 0 && dotProd(i, j) <= 0.0) {
+                is_true = 1;
+            }
+        }
+        on(0,j) = is_true;
+        if (in(0,j) == 1 || on(0,j) == 1) {
+            in(0,j) = 1;
+        }
+        else {
+            in(0,j) = 0;
+        }
+    }
+
+    transpose_int_matrix_t(in, is_in_polygon);
+
+    return;
+}
+
+
+void C_cavity_receiver::transpose_matrix_t(const util::matrix_t<double>& a, util::matrix_t<double>& b)
+{
+    size_t n_row = a.nrows();
+    size_t n_col = a.ncols();
+    b.resize_fill(n_col, n_row, std::numeric_limits<double>::quiet_NaN());
+    for (size_t i = 0; i < n_row; i++) {
+        for (size_t j = 0; j < n_col; j++) {
+            b(j,i) = a(i,j);
+        }
+    }
+}
+
+void C_cavity_receiver::transpose_int_matrix_t(const util::matrix_t<int>& a, util::matrix_t<int>& b)
+{
+    size_t n_row = a.nrows();
+    size_t n_col = a.ncols();
+    b.resize_fill(n_col, n_row, std::numeric_limits<double>::quiet_NaN());
+    for (size_t i = 0; i < n_row; i++) {
+        for (size_t j = 0; j < n_col; j++) {
+            b(j, i) = a(i, j);
+        }
+    }
+}
+
 
 void C_cavity_receiver::meshMapped(const util::matrix_t<double>& poly, double elemSize,
     util::matrix_t<double>& nodes, util::matrix_t<double>& quads)
@@ -801,10 +1065,23 @@ double C_cavity_receiver::mag_vect(const util::matrix_t<double>& vector_in)
 
 void C_cavity_receiver::sumcolumns(const util::matrix_t<double>& a, util::matrix_t<double>& summed)
 {
-    summed.resize_fill(1, 3, 0.0);
+    size_t ncols = a.ncols();
+    summed.resize_fill(1, ncols, 0.0);
 
     for (size_t i = 0; i < a.nrows(); i++) {
-        for (size_t j = 0; j < 3; j++) {
+        for (size_t j = 0; j < ncols; j++) {
+            summed(0, j) += a(i, j);
+        }
+    }
+}
+
+void C_cavity_receiver::sum_int_columns(const util::matrix_t<int>& a, util::matrix_t<int>& summed)
+{
+    size_t ncols = a.ncols();
+    summed.resize_fill(1, ncols, 0.0);
+
+    for (size_t i = 0; i < a.nrows(); i++) {
+        for (size_t j = 0; j < ncols; j++) {
             summed(0, j) += a(i, j);
         }
     }

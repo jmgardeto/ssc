@@ -124,6 +124,8 @@ public:
 
     void sumcolumns(const util::matrix_t<double>&, util::matrix_t<double>&);
 
+    void sum_int_columns(const util::matrix_t<int>& a, util::matrix_t<int>& summed);
+
     void diffrows(const util::matrix_t<double>& a, const util::matrix_t<double>& b, util::matrix_t<double>& a_less_b);
 
     void add_vect_rows(const util::matrix_t<double>& a, const util::matrix_t<double>& b, util::matrix_t<double>& a_plus_b);
@@ -140,6 +142,10 @@ public:
 
     void min_max_vects_from_columns(const util::matrix_t<double>& a, util::matrix_t<double>& max_vect, util::matrix_t<double>& min_vect);
 
+    void transpose_matrix_t(const util::matrix_t<double>& a, util::matrix_t<double>& b);
+
+    void transpose_int_matrix_t(const util::matrix_t<int>& a, util::matrix_t<int>& b);
+
     void to2D(const util::matrix_t<double>& poly, const util::matrix_t<double>& center,
         const util::matrix_t<double>& normal, const util::matrix_t<double>& xaxis,
         util::matrix_t<double>& poly_xy, util::matrix_t<double>& poly_rt);
@@ -155,10 +161,17 @@ public:
     void triMesh2D(double h0, const util::matrix_t<double>& bbox, const util::matrix_t<double>& pfix,
         const util::matrix_t<double>& poly_2D);
 
-    void pointToPoly(const util::matrix_t<double>& p, const util::matrix_t<double>& POLY);
+    void pointToPoly(const util::matrix_t<double>& p, const util::matrix_t<double>& POLY,
+                util::matrix_t<double>& d);
 
     double pointToLine(const util::matrix_t<double>& p, const util::matrix_t<double>& a,
         const util::matrix_t<double>& b);
+
+    void inpolygon(const util::matrix_t<double>& p_x, const util::matrix_t<double>& p_y,
+        const util::matrix_t<double>& poly_x, const util::matrix_t<double>& poly_y,
+        util::matrix_t<int>& is_in_polygon);
+
+
 };
 
 #endif // __csp_solver_cavity_receiver_
