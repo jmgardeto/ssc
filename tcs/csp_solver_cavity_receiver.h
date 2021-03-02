@@ -64,8 +64,8 @@ private:
 
     double receiverHeight; //[m] Receiver opening height in meters
     double receiverWidth; //[m] Reciever opening width in meters
-    //double topLipHeight;  //[m] Height of top lip in meters
-    //double botLipHeight;  //[m] Height of bottom lip in meters
+    double topLipHeight;  //[m] Height of top lip in meters
+    double botLipHeight;  //[m] Height of bottom lip in meters
     double e_act_sol;     //[-] Absorbtivity in short wave range for active surfaces
     double e_pass_sol;    //[-] Absorbtivity in short wave range for passive surfaces
     double e_act_therm;   //[-] Emissivity in long wave range for active surfaces
@@ -107,7 +107,8 @@ public:
 
 	virtual double area_proj();
 
-    void genOctCavity(double height /*m*/, double width /*m*/);
+    void genOctCavity(double height /*m*/, double width /*m*/,
+        double liptop /*m*/, double lipbot /*m*/);
 
     void meshGeometry();
 
@@ -123,6 +124,8 @@ public:
     double mag_vect(const util::matrix_t<double>& vector_in);
 
     double dotprod3D(const util::matrix_t<double>&, const util::matrix_t<double>&);
+
+    void flipup(const util::matrix_t<double>& a, util::matrix_t<double>& b);
 
     void sumcolumns(const util::matrix_t<double>&, util::matrix_t<double>&);
 

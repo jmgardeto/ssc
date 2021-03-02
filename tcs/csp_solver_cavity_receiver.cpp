@@ -47,7 +47,8 @@ C_cavity_receiver::C_cavity_receiver()
 	
 }
 
-void C_cavity_receiver::genOctCavity(double height /*m*/, double width /*m*/)
+void C_cavity_receiver::genOctCavity(double height /*m*/, double width /*m*/,
+    double liptop /*m*/, double lipbot /*m*/)
 {
     //function[PANEL1, PANEL2, PANEL3, PANEL4, FLOOR, COVER, TOPLIP, BOTLIP, APERTURE] = genOctCavity(height, width, lipTop, lipBot, varargin) % #codegen
     //    % creates geometry for a half - octagonal cavity reciever of specified width
@@ -76,9 +77,9 @@ void C_cavity_receiver::genOctCavity(double height /*m*/, double width /*m*/)
     mv_rec_surfs[BOTLIP].is_active_surf = false;
     mv_rec_surfs[APERTURE].is_active_surf = false;
 
-    // hardcode top and bottom lip for now
-    double lipTop = 0.0;
-    double lipBot = 0.0;
+    //// hardcode top and bottom lip for now
+    //double lipTop = 0.0;
+    //double lipBot = 0.0;
 
     double theta = CSP::pi / (double)nPanels;
 
@@ -132,7 +133,7 @@ void C_cavity_receiver::genOctCavity(double height /*m*/, double width /*m*/)
     mv_rec_surfs[TOPLIP].vertices.resize_fill(4, 3, std::numeric_limits<double>::quiet_NaN());
     mv_rec_surfs[BOTLIP].vertices.resize_fill(4, 3, std::numeric_limits<double>::quiet_NaN());
 
-    if (lipTop <= 0.0) {
+    if (liptop <= 0.0) {
         temp_p1 = mv_rec_surfs[COVER].vertices.row(0);
         for (size_t i = 0; i < temp_p1.length(); i++) {
             mv_rec_surfs[APERTURE].vertices(0, i) = temp_p1(0, i);
@@ -142,8 +143,28 @@ void C_cavity_receiver::genOctCavity(double height /*m*/, double width /*m*/)
             mv_rec_surfs[APERTURE].vertices(1, i) = temp_p1(0, i);
         }
     }
+    else {
+        util::matrix_t<double> temp_a(2, 3, std::numeric_limits<double>::quiet_NaN());
+        for (size_t j = 0; j < 3; j++) {
+            mv_rec_surfs[TOPLIP].vertices(0,j) = mv_rec_surfs[COVER].vertices(0,j);
+            mv_rec_surfs[TOPLIP].vertices(1,j) = mv_rec_surfs[COVER].vertices(mv_rec_surfs[COVER].vertices.nrows()-1,j);
+        }
+        for (size_t i = 0; i < 2; i++) {
+            temp_a(i, 0) = mv_rec_surfs[TOPLIP].vertices(i, 0);
+            temp_a(i, 1) = mv_rec_surfs[TOPLIP].vertices(i, 1);
+            temp_a(i, 2) = mv_rec_surfs[TOPLIP].vertices(i, 2) - liptop;
+        }
+        util::matrix_t<double> temp_b;
+        flipup(temp_a, temp_b);
+        for (size_t j = 0; j < 3; j++) {
+            mv_rec_surfs[TOPLIP].vertices(2,j) = temp_b(0,j);
+            mv_rec_surfs[TOPLIP].vertices(3,j) = temp_b(1,j);
+            mv_rec_surfs[APERTURE].vertices(0,j) = mv_rec_surfs[TOPLIP].vertices(3,j);
+            mv_rec_surfs[APERTURE].vertices(1,j) = mv_rec_surfs[TOPLIP].vertices(2,j);
+        }
+    }
 
-    if (lipBot <= 0.0) {
+    if (lipbot <= 0.0) {
         temp_p1 = mv_rec_surfs[FLOOR].vertices.row(nPanels);
         for (size_t i = 0; i < temp_p1.length(); i++) {
             mv_rec_surfs[APERTURE].vertices(2, i) = temp_p1(0, i);
@@ -151,6 +172,26 @@ void C_cavity_receiver::genOctCavity(double height /*m*/, double width /*m*/)
         temp_p1 = mv_rec_surfs[FLOOR].vertices.row(0);
         for (size_t i = 0; i < temp_p1.length(); i++) {
             mv_rec_surfs[APERTURE].vertices(3, i) = temp_p1(0, i);
+        }
+    }
+    else {
+        util::matrix_t<double> temp_a(2,3,std::numeric_limits<double>::quiet_NaN());
+        for (size_t j = 0; j < 3; j++) {
+            mv_rec_surfs[BOTLIP].vertices(0,j) = mv_rec_surfs[FLOOR].vertices(0,j);
+            mv_rec_surfs[BOTLIP].vertices(1,j) = mv_rec_surfs[FLOOR].vertices(mv_rec_surfs[FLOOR].vertices.nrows()-1,j);
+        }
+        for (size_t i = 0; i < 2; i++) {
+            temp_a(i,0) = mv_rec_surfs[BOTLIP].vertices(i,0);
+            temp_a(i,1) = mv_rec_surfs[BOTLIP].vertices(i,1);
+            temp_a(i,2) = mv_rec_surfs[BOTLIP].vertices(i,2) + lipbot;
+        }
+        util::matrix_t<double> temp_b;
+        flipup(temp_a, temp_b);
+        for (size_t j = 0; j < 3; j++) {
+            mv_rec_surfs[BOTLIP].vertices(2,j) = temp_b(0,j);
+            mv_rec_surfs[BOTLIP].vertices(3,j) = temp_b(1,j);
+            mv_rec_surfs[APERTURE].vertices(2,j) = mv_rec_surfs[BOTLIP].vertices(2,j);
+            mv_rec_surfs[APERTURE].vertices(3,j) = mv_rec_surfs[BOTLIP].vertices(3,j);
         }
     }
 
@@ -1052,6 +1093,19 @@ double C_cavity_receiver::mag_vect(const util::matrix_t<double>& vector_in)
     //return std::sqrt(std::pow(vector_in(0, 0), 2) + std::pow(vector_in(0, 1), 2) + std::pow(vector_in(0, 2), 2));
 }
 
+void C_cavity_receiver::flipup(const util::matrix_t<double>& a, util::matrix_t<double>& b)
+{
+    size_t nrows = a.nrows();
+    size_t ncols = a.ncols();
+    b.resize_fill(nrows, ncols, std::numeric_limits<double>::quiet_NaN());
+
+    for (size_t i = 0; i < nrows; i++) {
+        for (size_t j = 0; j < ncols; j++) {
+            b(i,j) = a(nrows-1-i,j);
+        }
+    }
+}
+
 void C_cavity_receiver::sumcolumns(const util::matrix_t<double>& a, util::matrix_t<double>& summed)
 {
     size_t ncols = a.ncols();
@@ -1139,8 +1193,9 @@ void C_cavity_receiver::init()
 
     receiverHeight = 12; // Receiver opening height in meters
     receiverWidth = 14; // Reciever opening width in meters
-    //topLipHeight = 1; // Height of top lip in meters
-    //botLipHeight = 1; // Height of bottom lip in meters
+    topLipHeight = 1; // Height of top lip in meters
+    botLipHeight = 1; // Height of bottom lip in meters
+
     e_act_sol = 0.965; // Absorbtivity in short wave range for active surfaces
     e_pass_sol = 0.05; // Absorbtivity in short wave range for passive surfaces
     e_act_therm = 0.85; // Emissivity in long wave range for active surfaces
@@ -1152,7 +1207,7 @@ void C_cavity_receiver::init()
     //flux_elemental = 388858.025; // Specified incident solar flux on each element
     //h = 0; // Convective heat transfer coefficients per element
 
-    genOctCavity(receiverHeight, receiverWidth);
+    genOctCavity(receiverHeight, receiverWidth, topLipHeight, botLipHeight);
 
     meshGeometry();
 
