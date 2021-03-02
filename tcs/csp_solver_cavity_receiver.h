@@ -78,6 +78,8 @@ private:
     //double h;             // Convective heat transfer coefficients per element
 
     std::vector<C_rec_surface> mv_rec_surfs;
+    std::vector<util::matrix_t<double>> m_v_elems;
+    util::matrix_t<double> m_nodesGlobal;
 
 public:
 

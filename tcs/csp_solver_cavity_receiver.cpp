@@ -60,8 +60,8 @@ void C_cavity_receiver::genOctCavity(double height /*m*/, double width /*m*/)
     mv_rec_surfs[PANEL2].type = 1;
     mv_rec_surfs[PANEL3].type = 1;
     mv_rec_surfs[PANEL4].type = 1;
-    mv_rec_surfs[FLOOR].type = 0;
-    mv_rec_surfs[COVER].type = 0;
+    mv_rec_surfs[FLOOR].type = 2;
+    mv_rec_surfs[COVER].type = 2;
     mv_rec_surfs[TOPLIP].type = 1;
     mv_rec_surfs[BOTLIP].type = 1;
     mv_rec_surfs[APERTURE].type = 2;
@@ -166,7 +166,6 @@ void C_cavity_receiver::meshGeometry()
             PANEL1, PANEL2, PANEL3, PANEL4, FLOOR, COVER, TOPLIP, BOTLIP, APERTURE);*/
 
     vector<util::matrix_t<double>> v_nodes;
-    vector<util::matrix_t<double>> v_elems;
 
     int lastNodeID = 0;
 
@@ -182,10 +181,12 @@ void C_cavity_receiver::meshGeometry()
 
             nodes.resize_fill(1,1,std::numeric_limits<double>::quiet_NaN());
             elems.resize_fill(1,1,std::numeric_limits<double>::quiet_NaN());
+            v_nodes.push_back(nodes);
         }
         else {
             if (type == 0) {
                 // Mesh with triangles
+                throw(C_csp_exception("Triangle meshes not currently supported. Need to add qhull project"));
                 meshPolygon(surf, elemSize);
             }
             else if (type == 1) {
@@ -196,45 +197,33 @@ void C_cavity_receiver::meshGeometry()
             else {
                 // Mesh as a single element
                 v_nodes.push_back(surf);
-                throw(C_csp_exception("afajf Not Finished"));
-                /*nodes{ i } = SURF;
-                elems = 1:size(SURF, 1);*/
-
-                double c = 4.6;
+                elems.resize(surf.nrows(), 1);
+                for (size_t i = 0; i < surf.nrows(); i++) {
+                    elems(i,0) = i;
+                }
             }
-        }
 
-        // Shift node IDs to account for previous element sets
-        add_constant_to_each_element(lastNodeID, elems);
-        v_elems.push_back(elems);
-        lastNodeID = lastNodeID + v_nodes[i].nrows();
+            // Shift node IDs to account for previous element sets
+            add_constant_to_each_element(lastNodeID, elems);
+            m_v_elems.push_back(elems);
+            lastNodeID = lastNodeID + v_nodes[i].nrows();
+        }
     }
 
-
-    /*for i = 1:nSurfs
-
-        if isscalar(SURF) && isnan(SURF)
-            % skip this surface
-            nodes{ i } = NaN;
-        varargout{ i } = NaN;
-        else
-            if type == 0 % mesh with triangles
-                [nodes{ i }, elems] = meshPolygon(SURF, elemSize);
-
-        elseif type == 1 % mesh with quads
-            [nodes{ i }, elems] = meshMapped(SURF, elemSize);
-
-            else% mesh as single element
-                nodes{ i } = SURF;
-        elems = 1:size(SURF, 1);
-
-        end
-
-            % shift node IDs to account for previous element sets
-            varargout{ i } = elems + lastNodeID;
-        lastNodeID = lastNodeID + size(nodes{ i }, 1);
-        end
-    end*/
+    m_nodesGlobal.resize_fill(lastNodeID, 3, 0.0);
+    lastNodeID = 0;
+    int nodeCount = 0;
+    for (size_t k = 0; k < mv_rec_surfs.size(); k++) {
+        if ( std::isfinite(v_nodes[k](0,0) )) { 
+            nodeCount = v_nodes[k].nrows();
+            for (size_t i = 0; i < nodeCount; i++) {
+                for (size_t j = 0; j < 3; j++) {
+                    m_nodesGlobal(lastNodeID + i,j) = v_nodes[k](i,j);
+                }
+            }
+            lastNodeID += nodeCount;
+        }
+    }
 
     return;
 }
