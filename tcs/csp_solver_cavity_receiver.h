@@ -78,8 +78,16 @@ private:
     //double h;             // Convective heat transfer coefficients per element
 
     std::vector<C_rec_surface> mv_rec_surfs;
-    std::vector<util::matrix_t<double>> m_v_elems;
+    std::vector<util::matrix_t<int>> m_v_elems;
     util::matrix_t<double> m_nodesGlobal;
+
+    util::matrix_t<int> m_elements;
+    std::vector<util::matrix_t<int>> m_surfIDs;
+    util::matrix_t<double> m_areas;
+    util::matrix_t<double> m_centroids;
+    int m_nElems;
+
+    util::matrix_t<bool> m_globalValues;
 
 public:
 
@@ -114,8 +122,10 @@ public:
 
     void makeGlobalElems();
 
+    void surfValuesToElems();
+
     void meshMapped(const util::matrix_t<double>& poly, double elemSize,
-        util::matrix_t<double>& nodes, util::matrix_t<double>& quads);
+        util::matrix_t<double>& nodes, util::matrix_t<int>& quads);
 
     void meshPolygon(const util::matrix_t<double>& poly, double elemSize);
 
@@ -139,7 +149,7 @@ public:
 
     void scale_vect(const util::matrix_t<double>& a, double scale, util::matrix_t<double>& out_vect);
 
-    void add_constant_to_each_element(double val, util::matrix_t<double>& a);
+    void add_constant_to_each_element(int val, util::matrix_t<int>& a);
 
     void ave_columns(const util::matrix_t<double>&, util::matrix_t<double>&);
 
@@ -162,7 +172,7 @@ public:
         util::matrix_t<double>& poly_xy, util::matrix_t<double>& poly_rt);
 
     void map(const util::matrix_t<double>& poly2D, double elemSize,
-        util::matrix_t<double>& nodes, util::matrix_t<double>& quads);
+        util::matrix_t<double>& nodes, util::matrix_t<int>& quads);
 
     void to3D(const util::matrix_t<double>& poly_xy, const util::matrix_t<double>& origin,
         const util::matrix_t<double>& normal, const util::matrix_t<double>& xaxis,

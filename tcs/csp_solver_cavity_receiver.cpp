@@ -217,11 +217,11 @@ void C_cavity_receiver::meshGeometry()
         size_t type = mv_rec_surfs[i].type;
 
         util::matrix_t<double> nodes;
-        util::matrix_t<double> elems;
+        util::matrix_t<int> elems;
         if (std::isnan(surf(0, 0))) {
 
             nodes.resize_fill(1,1,std::numeric_limits<double>::quiet_NaN());
-            elems.resize_fill(1,1,std::numeric_limits<double>::quiet_NaN());
+            elems.resize_fill(1,1,-1);
             v_nodes.push_back(nodes);
         }
         else {
@@ -273,39 +273,172 @@ void C_cavity_receiver::makeGlobalElems()
 {
     size_t n_surfs = mv_rec_surfs.size();
 
-    std::vector<util::matrix_t<int>> surfIDs;
     util::matrix_t<int> type(n_surfs, 1, 0);
     util::matrix_t<int> count(n_surfs, 1, 0);
 
     util::matrix_t<int> int_neg(1, 1, -1);
 
-    int nElems = 0;
+    m_nElems = 0;
 
     util::matrix_t<int> temp;
     for (size_t i = 0; i < n_surfs; i++) {
-        if (std::isfinite(m_v_elems[i](0, 0))) {
+        if (std::isfinite(mv_rec_surfs[i].vertices(0,0))) {
             count(i,0) = m_v_elems[i].nrows();
             type(i,0) = m_v_elems[i].ncols();
             // determine the number of elements in the ith set, and their kind
             temp.resize(count(i,0),1);
             for (size_t j = 0; j < count(i, 0); j++) {
-                temp(j,0) = nElems + j;
+                temp(j,0) = m_nElems + j;
             }
-            surfIDs.push_back(temp);
-            nElems += count(i,0);
+            m_surfIDs.push_back(temp);
+            m_nElems += count(i,0);
         }
         else {
-            surfIDs.push_back(int_neg);
+            m_surfIDs.push_back(int_neg);
         }
     }
 
     // initialize output arrays
     int typemax = round(max_int_first_column(type));
-    util::matrix_t<int> elements(nElems, typemax, 0);
-    util::matrix_t<double> areas(nElems, 1, std::numeric_limits<double>::quiet_NaN());
-    util::matrix_t<double> centroids(nElems, 3, std::numeric_limits<double>::quiet_NaN());
+    m_elements.resize_fill(m_nElems, typemax, 0);
+    m_areas.resize_fill(m_nElems, 1, std::numeric_limits<double>::quiet_NaN());
+    m_centroids.resize_fill(m_nElems, 3, std::numeric_limits<double>::quiet_NaN());
+
+    for (size_t i_surf = 0; i_surf < n_surfs; i_surf++) {
+        if (std::isfinite(mv_rec_surfs[i_surf].vertices(0, 0))) {
+
+            if (type(i_surf, 0) == 3) {
+                throw(C_csp_exception("makeGlobalElems: Triangle meshes not currently supported"));
+            }
+            else if (type(i_surf, 0) == 4) {
+
+                for (size_t i = 0; i < m_v_elems[i_surf].nrows(); i++) {
+                    for (size_t j = 0; j < m_v_elems[i_surf].ncols(); j++) {
+                        m_elements(m_surfIDs[i_surf](i,0),j) = m_v_elems[i_surf](i,j);
+                    }
+                }
+
+                util::matrix_t<double> diff1, diff2, cross;
+                double vecnorm;
+                for (size_t i = 0; i < m_v_elems[i_surf].nrows(); i++) {
+                    diffrows(m_nodesGlobal.row(m_v_elems[i_surf](i,2)), m_nodesGlobal.row(m_v_elems[i_surf](i, 0)), diff1);
+                    diffrows(m_nodesGlobal.row(m_v_elems[i_surf](i,3)), m_nodesGlobal.row(m_v_elems[i_surf](i, 1)), diff2);
+                    crossproduct(diff1, diff2, cross);
+                    m_areas(m_surfIDs[i_surf](i,0),0) = mag_vect(cross) / 2.0;
+                }
+
+                for (size_t i = 0; i < m_v_elems[i_surf].nrows(); i++) {
+                    for (size_t j = 0; j < 3; j++) {
+                        m_centroids(m_surfIDs[i_surf](i, 0), j) = 0.0;
+                        for (size_t k = 0; k < 4; k++) {
+                            m_centroids(m_surfIDs[i_surf](i, 0), j) += m_nodesGlobal(m_v_elems[i_surf](i, k), j);
+                        }
+                        m_centroids(m_surfIDs[i_surf](i, 0), j) *= 0.25;
+                    }
+                }
+            }
+            else if (type(i_surf, 0) > 4) {
+
+                for (size_t i = 0; i < m_v_elems[i_surf].nrows(); i++) {
+                    for (size_t j = 0; j < m_v_elems[i_surf].ncols(); j++) {
+                        m_elements(m_surfIDs[i_surf](i, 0), j) = m_v_elems[i_surf](i, j);
+                    }
+                }
+
+                // Area of arbitrary polygon
+                util::matrix_t<double> theseAreas(count(i_surf, 0), 1, 0.0);
+                util::matrix_t<double> poly_b(type(i_surf,0), 3, std::numeric_limits<double>::quiet_NaN());
+                util::matrix_t<double> poly_looped, cross, diff1, diff2, cross2, nhat;
+                for (size_t i = 0; i < count(i_surf, 0); i++) {
+                    // http://geomalgorithms.com/a01-_area.html
+                    for (size_t j = 0; j < type(i_surf, 0); j++) {
+                        for (size_t k = 0; k < 3; k++) {
+                            poly_b(j,k) = m_nodesGlobal(m_v_elems[i_surf](i,j),k);
+                        }
+                    }
+
+                    poly_looped = poly_b;
+                    poly_looped.resize_preserve(poly_b.nrows() + 1, 3, std::numeric_limits<double>::quiet_NaN());
+                    for (size_t k = 0; k < 3; k++) {
+                        poly_looped(poly_looped.nrows()-1, k) = poly_b(0,k);
+                    }
+
+                    util::matrix_t<double> toSum(1,3,0.0);
+                    for (size_t j = 0; j < type(i_surf, 0); j++) {
+                        crossproduct(poly_looped.row(j), poly_looped.row(j+1), cross);
+                        for (size_t k = 0; k < 3; k++) {
+                            toSum(0,k) += cross(0,k);
+                        }
+                    }
+
+                    diffrows(poly_b.row(1), poly_b.row(0), diff1);
+                    diffrows(poly_b.row(3), poly_b.row(0), diff2);
+                    crossproduct(diff1, diff2, cross2);
+                    norm3Dvect(cross2, nhat);
+
+                    double theseAreas = dotprod3D(nhat, toSum) / 2.0;
+
+                    m_areas(m_surfIDs[i_surf](i, 0), 0) = theseAreas;
+                }
+
+                // Centroid of arbitrary polygon
+                for (size_t i = 0; i < m_v_elems[i_surf].nrows(); i++) {
+                    for (size_t j = 0; j < 3; j++) {
+                        m_centroids(m_surfIDs[i_surf](i, 0), j) = 0.0;
+                        for (size_t k = 0; k < type(i_surf, 0); k++) {
+                            m_centroids(m_surfIDs[i_surf](i, 0), j) += m_nodesGlobal(m_v_elems[i_surf](i, k), j);
+                        }
+                        m_centroids(m_surfIDs[i_surf](i, 0), j) /= (double)type(i_surf, 0);
+                    }
+                }
+            }
+            else {
+                throw(C_csp_exception("makeGlobalElems: Incorrect dimensions for element sets"));
+            }
+
+        }
+    }
 
     return;
+}
+
+void C_cavity_receiver::surfValuesToElems()
+{
+    // CREATE EPSILON LOCAL VECTORS
+
+    int lastElemID = 0;
+    size_t n_surfs = mv_rec_surfs.size();
+    std::vector<util::matrix_t<bool>> value(mv_rec_surfs.size());
+
+    util::matrix_t<bool> temp;
+    for (size_t i_surf = 0; i_surf < n_surfs; i_surf++) {
+
+        // skip i_surf if surface not defined (e.g. no lip)
+        if (std::isfinite(mv_rec_surfs[i_surf].vertices(0, 0))) {
+
+            // elements
+            int nElems = m_v_elems[i_surf].nrows();
+            temp.resize_fill(nElems, 1, mv_rec_surfs[i_surf].is_active_surf);
+            value[i_surf] = temp;
+            lastElemID += nElems;
+        }
+    }
+
+    // Combine local vectors into global vector
+    m_globalValues.resize_fill(lastElemID, 1, false);
+    lastElemID = 0;
+    for (size_t i_surf = 0; i_surf < n_surfs; i_surf++) {
+
+        // skip i_surf if surface not defined (e.g. no lip)
+        if (std::isfinite(mv_rec_surfs[i_surf].vertices(0, 0))) {
+            int nElems = value[i_surf].nrows();
+            for (size_t i = 0; i < nElems; i++) {
+                m_globalValues(i+lastElemID,0) = value[i_surf](i,0);                
+            }
+            lastElemID += nElems;
+        }
+    }
+
 }
 
 void C_cavity_receiver::meshPolygon(const util::matrix_t<double>& poly, double elemSize)
@@ -866,7 +999,7 @@ void C_cavity_receiver::transpose_int_matrix_t(const util::matrix_t<int>& a, uti
 
 
 void C_cavity_receiver::meshMapped(const util::matrix_t<double>& poly, double elemSize,
-    util::matrix_t<double>& nodes, util::matrix_t<double>& quads)
+    util::matrix_t<double>& nodes, util::matrix_t<int>& quads)
 {
     double almostZero = 1.E-7;
 
@@ -952,7 +1085,7 @@ void C_cavity_receiver::to3D(const util::matrix_t<double>& poly_xy, const util::
 }
 
 void C_cavity_receiver::map(const util::matrix_t<double>& poly2D, double elemSize,
-    util::matrix_t<double>& nodes, util::matrix_t<double>& quads)
+    util::matrix_t<double>& nodes, util::matrix_t<int>& quads)
 {
     util::matrix_t<double> A = poly2D.row(0);
     util::matrix_t<double> B = poly2D.row(1);
@@ -988,7 +1121,7 @@ void C_cavity_receiver::map(const util::matrix_t<double>& poly2D, double elemSiz
 
     // initialize nodeand element arrays
     nodes.resize_fill((elemsM+1)*(elemsN+1), 2, 0.0);
-    quads.resize_fill(elemsM*elemsN, 4, 0.0);
+    quads.resize_fill(elemsM*elemsN, 4, -1);
 
     int nodeID = -1;     // last used node index - set to -1 for C++ 0-based index
     int elemID = -1;     // last used element index - set to -1 for C++ 0-based index
@@ -1080,7 +1213,7 @@ void C_cavity_receiver::to2D(const util::matrix_t<double>& poly, const util::mat
     return;
 }
 
-void C_cavity_receiver::add_constant_to_each_element(double val, util::matrix_t<double>& a)
+void C_cavity_receiver::add_constant_to_each_element(int val, util::matrix_t<int>& a)
 {
     for (size_t i = 0; i < a.nrows(); i++) {
         for (size_t j = 0; j < a.ncols(); j++) {
@@ -1269,6 +1402,8 @@ void C_cavity_receiver::init()
     meshGeometry();
 
     makeGlobalElems();
+
+    surfValuesToElems();
 
 	return;
 }
