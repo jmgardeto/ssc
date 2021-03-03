@@ -238,9 +238,9 @@ void C_cavity_receiver::meshGeometry()
             else {
                 // Mesh as a single element
                 v_nodes.push_back(surf);
-                elems.resize(surf.nrows(), 1);
-                for (size_t i = 0; i < surf.nrows(); i++) {
-                    elems(i,0) = i;
+                elems.resize(1, surf.nrows());
+                for (size_t j = 0; j < surf.nrows(); j++) {
+                    elems(0,j) = j;
                 }
             }
 
@@ -265,6 +265,45 @@ void C_cavity_receiver::meshGeometry()
             lastNodeID += nodeCount;
         }
     }
+
+    return;
+}
+
+void C_cavity_receiver::makeGlobalElems()
+{
+    size_t n_surfs = mv_rec_surfs.size();
+
+    std::vector<util::matrix_t<int>> surfIDs;
+    util::matrix_t<int> type(n_surfs, 1, 0);
+    util::matrix_t<int> count(n_surfs, 1, 0);
+
+    util::matrix_t<int> int_neg(1, 1, -1);
+
+    int nElems = 0;
+
+    util::matrix_t<int> temp;
+    for (size_t i = 0; i < n_surfs; i++) {
+        if (std::isfinite(m_v_elems[i](0, 0))) {
+            count(i,0) = m_v_elems[i].nrows();
+            type(i,0) = m_v_elems[i].ncols();
+            // determine the number of elements in the ith set, and their kind
+            temp.resize(count(i,0),1);
+            for (size_t j = 0; j < count(i, 0); j++) {
+                temp(j,0) = nElems + j;
+            }
+            surfIDs.push_back(temp);
+            nElems += count(i,0);
+        }
+        else {
+            surfIDs.push_back(int_neg);
+        }
+    }
+
+    // initialize output arrays
+    int typemax = round(max_int_first_column(type));
+    util::matrix_t<int> elements(nElems, typemax, 0);
+    util::matrix_t<double> areas(nElems, 1, std::numeric_limits<double>::quiet_NaN());
+    util::matrix_t<double> centroids(nElems, 3, std::numeric_limits<double>::quiet_NaN());
 
     return;
 }
@@ -1164,6 +1203,15 @@ double C_cavity_receiver::max_row_value(const util::matrix_t<double>& a)
     return maxval;
 }
 
+int C_cavity_receiver::max_row_int_value(const util::matrix_t<int>& a)
+{
+    int maxval = a(0, 0);
+    for (size_t i = 1; i < a.ncols(); i++) {
+        maxval = max(maxval, a(0, i));
+    }
+    return maxval;
+}
+
 double C_cavity_receiver::min_val_first_colum(const util::matrix_t<double>& a)
 {
     double minval = a(0, 0);
@@ -1171,6 +1219,15 @@ double C_cavity_receiver::min_val_first_colum(const util::matrix_t<double>& a)
         minval = min(minval, a(i, 0));
     }
     return minval;
+}
+
+int C_cavity_receiver::max_int_first_column(const util::matrix_t<int>& a)
+{
+    int maxval = a(0, 0);
+    for (size_t i = 1; i < a.nrows(); i++) {
+        maxval = max(maxval, a(i, 0));
+    }
+    return maxval;
 }
 
 void C_cavity_receiver::min_max_vects_from_columns(const util::matrix_t<double>& a, util::matrix_t<double>& max_vect, util::matrix_t<double>& min_vect)
@@ -1210,6 +1267,8 @@ void C_cavity_receiver::init()
     genOctCavity(receiverHeight, receiverWidth, topLipHeight, botLipHeight);
 
     meshGeometry();
+
+    makeGlobalElems();
 
 	return;
 }

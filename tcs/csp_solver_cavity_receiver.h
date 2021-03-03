@@ -112,6 +112,8 @@ public:
 
     void meshGeometry();
 
+    void makeGlobalElems();
+
     void meshMapped(const util::matrix_t<double>& poly, double elemSize,
         util::matrix_t<double>& nodes, util::matrix_t<double>& quads);
 
@@ -143,7 +145,11 @@ public:
 
     double max_row_value(const util::matrix_t<double>& a);
 
+    int max_row_int_value(const util::matrix_t<int>& a);
+
     double min_val_first_colum(const util::matrix_t<double>& a);
+
+    int max_int_first_column(const util::matrix_t<int>& a);
 
     void min_max_vects_from_columns(const util::matrix_t<double>& a, util::matrix_t<double>& max_vect, util::matrix_t<double>& min_vect);
 
