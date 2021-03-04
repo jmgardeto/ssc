@@ -40,6 +40,7 @@ public:
         double e_size;
         size_t type;
         bool is_active_surf;
+        bool is_flipRoute;
 
         C_rec_surface()
         {
@@ -89,6 +90,9 @@ private:
 
     util::matrix_t<bool> m_globalValues;
 
+    std::vector<util::matrix_t<int>> m_FCA;
+
+
 public:
 
 	// Methods
@@ -124,6 +128,8 @@ public:
 
     void surfValuesToElems();
 
+    void zigzagRouting(size_t n_steps);
+
     void meshMapped(const util::matrix_t<double>& poly, double elemSize,
         util::matrix_t<double>& nodes, util::matrix_t<int>& quads);
 
@@ -158,6 +164,10 @@ public:
     int max_row_int_value(const util::matrix_t<int>& a);
 
     double min_val_first_colum(const util::matrix_t<double>& a);
+
+    double min_column_val(const util::matrix_t<double>& a, size_t n_c);
+
+    double max_column_val(const util::matrix_t<double>& a, size_t n_c);
 
     int max_int_first_column(const util::matrix_t<int>& a);
 

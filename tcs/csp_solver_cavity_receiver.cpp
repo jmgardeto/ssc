@@ -77,6 +77,12 @@ void C_cavity_receiver::genOctCavity(double height /*m*/, double width /*m*/,
     mv_rec_surfs[BOTLIP].is_active_surf = false;
     mv_rec_surfs[APERTURE].is_active_surf = false;
 
+    mv_rec_surfs[PANEL1].is_flipRoute = true;
+    mv_rec_surfs[PANEL2].is_flipRoute = false;
+    mv_rec_surfs[PANEL3].is_flipRoute = true;
+    mv_rec_surfs[PANEL4].is_flipRoute = false;
+
+
     //// hardcode top and bottom lip for now
     //double lipTop = 0.0;
     //double lipBot = 0.0;
@@ -439,6 +445,178 @@ void C_cavity_receiver::surfValuesToElems()
         }
     }
 
+}
+
+void C_cavity_receiver::zigzagRouting(size_t n_steps)
+{
+    double tol = 0.05;      // fraction of receiver height
+    int maxDim = m_centroids.nrows();
+
+    int n_surf_all = mv_rec_surfs.size();
+    int n_active = 0;
+    for (size_t i = 0; i < n_surf_all; i++) {
+        if (mv_rec_surfs[i].is_active_surf) {
+            n_active++;
+        }
+    }
+
+    m_FCA.resize(n_active);
+
+    size_t maxRow = 0;
+    size_t maxCol = 0;
+
+    for (size_t i_surf = 0; i_surf < n_active; i_surf++) {
+
+        size_t nElems = m_surfIDs[i_surf].nrows();
+
+        util::matrix_t<int> FCM(nElems, nElems, 0.0);
+        util::matrix_t<double> cents(nElems, 3, std::numeric_limits<double>::quiet_NaN());
+
+        for (size_t i = 0; i < nElems; i++) {
+            for (size_t j = 0; j < 3; j++) {
+                cents(i,j) = m_centroids(m_surfIDs[i_surf][i],j);
+            }
+        }
+
+        int count = -1;
+
+        // translate elements to 2D domain
+        util::matrix_t<double> panelXaxis;
+        diffrows(cents.row(1), cents.row(0), panelXaxis);
+        util::matrix_t<double> diff1;
+        diffrows(cents.row(cents.nrows()-1), cents.row(0), diff1);
+        util::matrix_t<double> panelNorm;
+        crossproduct(panelXaxis, diff1, panelNorm);
+
+        util::matrix_t<double> cents2D, temp;
+        to2D(cents, cents.row(0), panelNorm, panelXaxis, cents2D, temp);
+
+
+        // determine step heights - this could be done better
+        double min_cent = min_column_val(cents2D, 1);
+        double max_cent = max_column_val(cents2D, 1);
+        double delta_cent = (max_cent - min_cent) / (double)(n_steps-1);
+        util::matrix_t<double> steps(n_steps, 1, std::numeric_limits<double>::quiet_NaN());
+        for (size_t i = 0; i < n_steps; i++) {
+            steps(i,0) = min_cent + delta_cent*i;
+        }
+
+        // Sort elements by the step to which they are closest
+        util::matrix_t<int> elemStep(nElems, 1, 0);
+        int i_min;
+        double minval, ival;
+        for (size_t j = 0; j < nElems; j++) {
+            i_min = 0;
+            minval = abs(cents2D(j,1) - steps(i_min,0));
+            for (size_t i = 1; i < n_steps; i++) {
+                ival = abs(cents2D(j, 1) - steps(i, 0));
+                if (ival < minval) {
+                    minval = ival;
+                    i_min = i;
+                }
+            }
+            elemStep(j,0) = i_min;
+        }
+
+        // Loop through each step
+        for (int j_step = n_steps - 1; j_step >= 0; j_step--) {
+
+            std::vector<int> elem_rows;
+            for (size_t i = 0; i < nElems; i++) {
+                if (elemStep(i, 0) == j_step) {
+                    elem_rows.push_back(i);
+                }
+            }
+
+            int n_er = elem_rows.size();
+            if (n_er > 0) {
+                util::matrix_t<double> centsStep(n_er, 2, std::numeric_limits<double>::quiet_NaN());
+                util::matrix_t<int> elemIDsStep(n_er, 1, -1);
+
+                for (size_t i = 0; i < n_er; i++) {
+                    for (size_t j = 0; j < 2; j++) {
+                        centsStep(i,j) = cents2D(elem_rows[i],j);
+                        elemIDsStep(i,0) = m_surfIDs[i_surf](elem_rows[i],0);
+                    }
+                }
+
+                // Determine number of columns and their locations
+                std::vector<double> v_width(n_er);
+                for (size_t i = 0; i < n_er; i++) {
+                    v_width[i] = centsStep(i,0);
+                }
+
+                std::vector<double>::iterator last = std::unique(v_width.begin(), v_width.end());
+                v_width.erase(last, v_width.end());
+                std::sort(v_width.begin(), v_width.end());
+                last = std::unique(v_width.begin(), v_width.end());
+                v_width.erase(last, v_width.end());
+
+                int columns = v_width.size();
+                util::matrix_t<double> width(columns, 1);
+                for (size_t i = 0; i < columns; i++) {
+                    width(i,0) = v_width[i];
+                }
+
+                util::matrix_t<double> width_copy = width;
+                if (mv_rec_surfs[i_surf].is_flipRoute) {
+                    if (j_step % 2 == 1) { // alternates flow direction for each step
+                        flipup(width_copy, width);
+                    }
+                }
+                else {
+                    if ((j_step + 1) % 2 == 1) {
+                        flipup(width_copy, width);
+                    }
+                }
+                
+                for (size_t k = 0; k < columns; k++) {
+                    std::vector<bool> test(n_er);
+                    bool is_any_true = false;
+                    for (size_t i = 0; i < n_er; i++) {
+                        test[i] = abs(centsStep(i,0)-width(k,0)) < tol;
+                        if (test[i]) {
+                            is_any_true = true;
+                        }
+                    }
+
+                    if (is_any_true) {
+                        count++;
+                    }
+
+                    int n_test = test.size();
+
+                    if (n_test > 0) {
+                        std::vector<int> elemGroup;
+                        for (size_t i = 0; i < n_test; i++) {
+                            if (test[i]) {
+                                elemGroup.push_back(elemIDsStep[i]);
+                            }
+                        }
+
+                        if (elemGroup.size() > maxCol) {
+                            maxCol = elemGroup.size();
+                        }
+
+                        
+                        for (size_t j = 0; j < elemGroup.size(); j++) {
+                            FCM(count,j) = elemGroup[j];
+                        }
+
+                        double abce = 1.23;
+                    }
+                }
+            }
+        }
+
+        if (count > maxRow) {
+            maxRow = count;
+        }
+
+        m_FCA[i_surf] = FCM;
+    }
+
+    return;
 }
 
 void C_cavity_receiver::meshPolygon(const util::matrix_t<double>& poly, double elemSize)
@@ -1345,11 +1523,29 @@ int C_cavity_receiver::max_row_int_value(const util::matrix_t<int>& a)
     return maxval;
 }
 
+double C_cavity_receiver::max_column_val(const util::matrix_t<double>& a, size_t n_c)
+{
+    double maxval = a(0, n_c);
+    for (size_t i = 1; i < a.nrows(); i++) {
+        maxval = max(maxval, a(i, n_c));
+    }
+    return maxval;
+}
+
 double C_cavity_receiver::min_val_first_colum(const util::matrix_t<double>& a)
 {
     double minval = a(0, 0);
     for (size_t i = 1; i < a.nrows(); i++) {
         minval = min(minval, a(i, 0));
+    }
+    return minval;
+}
+
+double C_cavity_receiver::min_column_val(const util::matrix_t<double>& a, size_t n_c)
+{
+    double minval = a(0, n_c);
+    for (size_t i = 1; i < a.nrows(); i++) {
+        minval = min(minval, a(i, n_c));
     }
     return minval;
 }
@@ -1397,6 +1593,8 @@ void C_cavity_receiver::init()
     //flux_elemental = 388858.025; // Specified incident solar flux on each element
     //h = 0; // Convective heat transfer coefficients per element
 
+    size_t pipeWindings = 9;    // round(receiverHeight / min(elemSizes))
+
     genOctCavity(receiverHeight, receiverWidth, topLipHeight, botLipHeight);
 
     meshGeometry();
@@ -1404,6 +1602,8 @@ void C_cavity_receiver::init()
     makeGlobalElems();
 
     surfValuesToElems();
+
+    zigzagRouting(pipeWindings);
 
 	return;
 }
