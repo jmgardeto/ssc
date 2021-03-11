@@ -92,6 +92,8 @@ private:
 
     std::vector<util::matrix_t<int>> m_FCA;
 
+    util::matrix_t<double> m_F;
+
 
 public:
 
@@ -129,6 +131,21 @@ public:
     void surfValuesToElems();
 
     void zigzagRouting(size_t n_steps);
+
+    void VFMatrix();
+
+    void edgePairParameters(const util::matrix_t<double>& Po, const util::matrix_t<double>& Pf, const util::matrix_t<double>& Qo, const util::matrix_t<double>& Qf,
+        double& D, util::matrix_t<double>& sOrigin, util::matrix_t<double>& sHat, util::matrix_t<double>& lHat, util::matrix_t<double>& lOrigin, bool& skew);
+
+    void viewFactor(const util::matrix_t<double>& a, const util::matrix_t<double>& b, double& F_AB, double& F_BA);
+
+    double fParallel(double s, double l, double d);
+
+    double f_skew(double s, double l, double alpha, double cosAlpha, double sinAlpha, double d);
+
+    double imagLi_2(double mag, double angle);
+
+    double Cl(double theta);
 
     void meshMapped(const util::matrix_t<double>& poly, double elemSize,
         util::matrix_t<double>& nodes, util::matrix_t<int>& quads);
@@ -171,6 +188,8 @@ public:
 
     int max_int_first_column(const util::matrix_t<int>& a);
 
+    bool are_rows_equal(const util::matrix_t<double>& a, const util::matrix_t<double>& b, int i_row);
+
     void min_max_vects_from_columns(const util::matrix_t<double>& a, util::matrix_t<double>& max_vect, util::matrix_t<double>& min_vect);
 
     void transpose_matrix_t(const util::matrix_t<double>& a, util::matrix_t<double>& b);
@@ -202,6 +221,8 @@ public:
         const util::matrix_t<double>& poly_x, const util::matrix_t<double>& poly_y,
         util::matrix_t<int>& is_in_polygon);
 
+    void polygon_normal_and_area(const util::matrix_t<double>& poly_a,
+        util::matrix_t<double>& norm_vect, double& area, int& n_rows);
 
 };
 

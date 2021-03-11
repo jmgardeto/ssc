@@ -619,6 +619,439 @@ void C_cavity_receiver::zigzagRouting(size_t n_steps)
     return;
 }
 
+void C_cavity_receiver::VFMatrix()
+{
+    int n_surfs = m_v_elems.size();
+    int nElems = 0;
+    for (size_t i = 0; i < n_surfs; i++) {
+        nElems += m_v_elems[i].nrows();
+    }
+
+    m_F.resize_fill(nElems, nElems, 0.0);
+
+    int iLast = 0; // last used row index in F matrix
+
+    util::matrix_t<double> ELEM_I;
+    util::matrix_t<double> ELEM_J;
+
+
+    for (size_t g_surf = 0; g_surf < n_surfs - 1; g_surf++) {   // loop though surfaces
+        if (std::isfinite(mv_rec_surfs[g_surf].vertices(0, 0))) {   // check for empty
+            int gElems = m_v_elems[g_surf].nrows();
+            int gType = m_v_elems[g_surf].ncols();
+
+            int jLast = iLast + gElems; // last used column index in F matrix
+            for (size_t h_surf = g_surf + 1; h_surf < n_surfs; h_surf++) {
+                if (std::isfinite(mv_rec_surfs[h_surf].vertices(0, 0))) {   // check for empty
+                    int hElems = m_v_elems[h_surf].nrows();
+                    int hType = m_v_elems[h_surf].ncols();
+
+                    ELEM_I.resize_fill(gType, 3, std::numeric_limits<double>::quiet_NaN());
+                    for (size_t i_gElems = 0; i_gElems < gElems; i_gElems++) {
+                        
+                        for (size_t i = 0; i < gType; i++) {
+                            for (size_t j = 0; j < 3; j++) {
+                                ELEM_I(i,j) = m_nodesGlobal(m_v_elems[g_surf](i_gElems,i),j);
+                            }
+                        }
+
+                        ELEM_J.resize_fill(hType, 3, std::numeric_limits<double>::quiet_NaN());
+                        for (size_t j_hElems = 0; j_hElems < hElems; j_hElems++) {
+                            for (size_t i = 0; i < hType; i++) {
+                                for (size_t j = 0; j < 3; j++) {
+                                    ELEM_J(i,j) = m_nodesGlobal(m_v_elems[h_surf](j_hElems,i),j);
+                                }
+                            }
+                            // calculate and assign view factors to F matrix
+                            // use reciprocity
+                            viewFactor(ELEM_I, ELEM_J, m_F(iLast+i_gElems,jLast+j_hElems), m_F(jLast+j_hElems,iLast+i_gElems));
+                        }
+                    }
+
+                    jLast = jLast + hElems; // increment last used column index by the number of elements in the last set 'h'
+                }
+            }
+
+            iLast = iLast + gElems; // increment last used row index by the number of elements in the last set 'g'
+        }
+    }
+
+    return;
+}
+
+void C_cavity_receiver::viewFactor(const util::matrix_t<double>& poly_a, const util::matrix_t<double>& poly_b, double& F_AB, double& F_BA)
+{
+    double almostzero = 1.E-9;
+
+    util::matrix_t<double> n_A;
+    double areaA;
+    int N;
+
+    polygon_normal_and_area(poly_a, n_A, areaA, N);
+
+    util::matrix_t<double> n_B;
+    double areaB;
+    int M;
+
+    polygon_normal_and_area(poly_b, n_B, areaB, M);
+
+    util::matrix_t<double> sumTerms(N, M, std::numeric_limits<double>::quiet_NaN());     // terms to sum to yield conductance
+    util::matrix_t<int> skewPairs(N, M, 0);    //tracks which terms come from parallel edges
+
+    for (size_t p = 0; p < M; p++) {    // loop through vertices of polygon B
+        for (size_t i = 0; i < N; i++) {    // loop through vertices of polygon A
+            util::matrix_t<double> r_i = poly_a.row(i); 
+            util::matrix_t<double> r_p = poly_b.row(p);
+
+            // loop pairings of vertices to cycle through edges
+            util::matrix_t<double> r_j;
+            if (i < N-1) {
+                r_j = poly_a.row(i+1);
+            }
+            else {
+                r_j = poly_a.row(0);
+            }
+
+            util::matrix_t<double> r_q;
+            if (p < M-1) {
+                r_q = poly_b.row(p+1);
+            }
+            else {
+                r_q = poly_b.row(0);
+            }
+
+            // check for coincident vertices - nudge polygon B vertices if found
+            if (are_rows_equal(r_i, r_p, 0) || are_rows_equal(r_j, r_p, 0)) {
+                for (size_t jj = 0; jj < r_p.ncols(); jj++) {
+                    r_p(0, jj) += almostzero;
+                }
+            }
+            else if (are_rows_equal(r_i, r_q, 0) || are_rows_equal(r_j, r_q, 0)) {
+                for (size_t jj = 0; jj < r_q.ncols(); jj++) {
+                    r_q(0, jj) += almostzero;
+                }
+            }
+
+            // determine parameterized coordinates for each edge, and minimum
+            // distance between edge rays(edges extended infinitely into space)
+            double dMin;
+            util::matrix_t<double> sOrigin, sHat, lHat, lOrigin;
+            bool skew;
+            edgePairParameters(r_i, r_j, r_p, r_q, dMin, sOrigin, sHat, lHat, lOrigin, skew);
+
+            if (skew) {
+                // locate each vertex in the parameterized coordinate system
+                util::matrix_t<double> ri_sO, rj_sO, rp_lO, rq_lO;
+                diffrows(r_i, sOrigin, ri_sO);
+                diffrows(r_j, sOrigin, rj_sO);
+                diffrows(r_p, lOrigin, rp_lO);
+                diffrows(r_q, lOrigin, rq_lO);
+
+                double s_i = dotprod3D(ri_sO, sHat);
+                double s_j = dotprod3D(rj_sO, sHat);
+                double l_p = dotprod3D(rp_lO, lHat);
+                double l_q = dotprod3D(rq_lO, lHat);
+
+                skewPairs(i, p) = 1;
+                double cosAlpha = dotprod3D(sHat, lHat);
+                double alpha = acos(cosAlpha);
+                double sinAlpha = sin(alpha);
+
+                // Eq.(22a) from paper - calculate final terms that yield the
+                // view factor when summed and divided by(4 * pi * area)
+
+                sumTerms(i, p) = cosAlpha * (f_skew(s_j, l_q, alpha, cosAlpha, sinAlpha, dMin)
+                    - f_skew(s_i, l_q, alpha, cosAlpha, sinAlpha, dMin)
+                    - f_skew(s_j, l_p, alpha, cosAlpha, sinAlpha, dMin)
+                    + f_skew(s_i, l_p, alpha, cosAlpha, sinAlpha, dMin));
+
+                if (!isfinite(sumTerms(i, p))) {
+                    double abce = 123;
+                }
+            }
+            else {  // alternate expression for when alpha approaches zero
+                lHat = sHat;
+                // locate each vertex in the parameterized coordinate system
+                util::matrix_t<double> ri_sO, rj_sO, rp_lO, rq_lO;
+                diffrows(r_i, sOrigin, ri_sO);
+                diffrows(r_j, sOrigin, rj_sO);
+                diffrows(r_p, lOrigin, rp_lO);
+                diffrows(r_q, lOrigin, rq_lO);
+
+                double s_i = dotprod3D(ri_sO, sHat);
+                double s_j = dotprod3D(rj_sO, sHat);
+                double l_p = dotprod3D(rp_lO, lHat);
+                double l_q = dotprod3D(rq_lO, lHat);
+
+                skewPairs(i,p) = 0;
+                sumTerms(i,p) = dotprod3D(sHat,lHat)*(fParallel(s_j, l_q, dMin) -
+                    fParallel(s_i, l_q, dMin) - fParallel(s_j, l_p, dMin) + fParallel(s_i, l_p, dMin));
+
+                if (!isfinite(sumTerms(i, p))) {
+                    double abce = 123;
+                }
+            }
+        }
+    }
+
+    double radUA = 0.0;
+    for (size_t p = 0; p < M; p++) {    // loop through vertices of polygon B
+        for (size_t i = 0; i < N; i++) {    // loop through vertices of polygon A
+            radUA += sumTerms(i,p);
+        }
+    }
+
+    radUA = abs(radUA)/(4.0*CSP::pi);
+
+    F_AB = radUA / areaA;
+    F_BA = radUA / areaB;
+
+    if (!isfinite(F_AB)) {
+        double abc = 1.23;
+    }
+
+    return;
+}
+
+double C_cavity_receiver::fParallel(double s, double l, double d)
+{
+    // Eq. 23 from paper
+    if (d == 0.0) {
+        d = 1.E-9;
+    }
+
+    double sMinusl = s - l;
+    double sMinusl2 = sMinusl*sMinusl;
+    double s2 = s*s;
+    double l2 = l*l;
+    double d2 = d*d;
+
+    double acos_arg = min(1.0, max(-1.0, sMinusl / sqrt(s2 + l2 - 2. * s * l + d2)));
+    double F = 0.5*(sMinusl2-d2)*log(sMinusl2+d2)-2.*sMinusl*d*acos(acos_arg)+s*l;
+    return F;
+}
+
+double C_cavity_receiver::f_skew(double s, double l, double alpha, double cosAlpha, double sinAlpha, double d)
+{
+    // Eq. 22b from paper
+    double s2 = s*s;
+    double l2 = l*l;
+    double d2 = d*d;
+    double sinAlpha2 = sinAlpha*sinAlpha;
+
+    double wsqrt = sqrt(s2 + d2/sinAlpha2);
+    double psqrt = sqrt(l2 + d2/sinAlpha2);
+    double wdim = 1.E-9;
+    if (abs(s + wsqrt) > 0) {
+        wdim = s + wsqrt;
+    }
+    double pdim = 1.E-9;
+    if (abs(l + psqrt) > 0) {
+        pdim = l + psqrt;
+    }
+
+    double F = (0.5 * cosAlpha * (s2 + l2) - s * l)* log(s2 + l2 - 2 * s * l * cosAlpha + d2)
+        + s * sinAlpha * wsqrt * atan2(sqrt(s2 * sinAlpha2 + d2), (l - s * cosAlpha)) 
+        + l * sinAlpha * psqrt * atan2(sqrt(l2 * sinAlpha2 + d2), (s - l * cosAlpha)) + s * l 
+        + 0.5 * (d2 / sinAlpha) * (imagLi_2((wdim / pdim), alpha) + imagLi_2((pdim / wdim), alpha) - 2 * imagLi_2((wdim - 2 * s) / pdim, (CSP::pi - alpha)));
+
+    return F;
+}
+
+double C_cavity_receiver::imagLi_2(double mag, double angle)
+{
+    double imaginaryPart = std::numeric_limits<double>::quiet_NaN();
+    if (mag > 1.E-9) {
+        double omega = atan2(mag*sin(angle), (1. - mag*cos(angle)));
+        imaginaryPart = 0.5 * Cl(2 * angle) + 0.5 * Cl(2 * omega) - 0.5 * Cl(2 * omega + 2 * angle) + log(mag) * omega;
+    }
+    else {
+        imaginaryPart = mag * sin(angle);
+    }
+
+    return imaginaryPart;
+}
+
+double C_cavity_receiver::Cl(double theta_in)
+{
+    double almostZero = 1.E-9;
+
+    double theta = std::fmod(theta_in, 2.0*CSP::pi); // theta % (2.0 * CSP::pi);
+    double chebArg = theta / CSP::pi - 1.0;
+    double b[] = { 1.865555351433979e-1, 6.269948963579612e-2, 3.139559104552675e-4, 
+        3.916780537368088e-6, 6.499672439854756e-8, 1.238143696612060e-9, 
+        5.586505893753557e-13 };
+    // Chebyshev polynomials of degrees 2 * n + 1 (n = 1:6) found using the sym command :
+    // >> chebyshevT((2 * (0:6) + 1), sym(chebArg));
+    double T[] = { chebArg, 4 * pow(chebArg,3) - 3 * chebArg, 
+        16 * pow(chebArg,5) - 20 * pow(chebArg,3) + 5 * chebArg, 
+        64 * pow(chebArg,7) - 112 * pow(chebArg,5) + 56 * pow(chebArg,3) - 7 * chebArg, 
+        256 * pow(chebArg,9) - 576 * pow(chebArg,7) + 432 * pow(chebArg,5) - 120 * pow(chebArg,3) + 9 * chebArg,
+        1024 * pow(chebArg,11) - 2816 * pow(chebArg,9) + 2816 * pow(chebArg,7) - 1232 * pow(chebArg,5) + 220 * pow(chebArg,3) - 11 * chebArg,
+        4096 * pow(chebArg,13) - 13312 * pow(chebArg,11) + 16640 * pow(chebArg,9) - 9984 * pow(chebArg,7) + 2912 * pow(chebArg,5) - 364 * pow(chebArg,3) + 13 * chebArg };
+
+    double sumbT = 0.0;
+    for (size_t i = 0; i < 6; i++) {
+        sumbT += b[i] * T[i];
+    }
+
+    double ClausenIntegral = (theta - CSP::pi) * (2 + log((pow(CSP::pi,2)) / 2)) + (2 * CSP::pi - theta) * log((2 * CSP::pi - theta) * (1 - almostZero) + almostZero)
+        - theta * log(theta * (1 - almostZero) + almostZero) + sumbT;
+
+    return ClausenIntegral;
+}
+
+void C_cavity_receiver::edgePairParameters(const util::matrix_t<double>& Po, const util::matrix_t<double>& Pf, const util::matrix_t<double>& Qo, const util::matrix_t<double>& Qf,
+    double& D, util::matrix_t<double>& sOrigin, util::matrix_t<double>& sHat, util::matrix_t<double>& lHat, util::matrix_t<double>& lOrigin, bool& skew)
+{
+    // http://geomalgorithms.com/a07-_distance.html
+    // find shortest distance D between line Po + s * u and Qo + t * v for initial
+    // points Poand Qo, parameters sand t, and vectors uand v
+
+    util::matrix_t<double> u, v, w;
+    diffrows(Pf, Po, u);
+    diffrows(Qf, Qo, v);
+    diffrows(Po, Qo, w);
+
+    util::matrix_t<double> u_copy = u;
+    norm3Dvect(u_copy, u);
+    util::matrix_t<double> v_copy = v;
+    norm3Dvect(v_copy, v);
+
+    double a = 1.0;
+    double b = dotprod3D(u, v);
+    double c = 1.0;
+    double d = dotprod3D(u, w);
+    double e = dotprod3D(v, w);
+
+    double den = a*c - b*b;
+
+    // Calculate shortest distance between edge rays
+    skew = false;
+    double s, l;
+    if (den > 1.E-9) {
+        skew = true;
+        s =  (b*e - c*d)/den;
+        l = (a*e - b*d)/den;
+        util::matrix_t<double> vecsum(1,3,std::numeric_limits<double>::quiet_NaN());
+        for (size_t j = 0; j < w.ncols(); j++) {
+            vecsum(0,j) = w(0,j) + s*u(0,j) - l*v(0,j);
+        }
+        D = mag_vect(vecsum);
+    }
+    else {
+        skew = false;
+        s = 0.0;
+        l = e / c;
+        util::matrix_t<double> vecsum(1, 3, std::numeric_limits<double>::quiet_NaN());
+        for (size_t j = 0; j < w.ncols(); j++) {
+            vecsum(0, j) = w(0, j) - l*v(0,j);
+        }
+        D = mag_vect(vecsum);
+    }
+
+    // see Fig 5 in this paper:
+    // Narayanaswamy, Arvind. "An analytic expression for radiation view 
+    // factor between two arbitrarily oriented planar polygons." International
+    // Journal of Heat and Mass Transfer 91 (2015) : 841 - 847.
+    // for description of why these values are calculated in this way.
+    //
+    // parameter origin is location on edge ray where distance between edges has
+    // its smallest value
+    sOrigin.resize_fill(1, 3, std::numeric_limits<double>::quiet_NaN());
+    lOrigin.resize_fill(1, 3, std::numeric_limits<double>::quiet_NaN());
+    for (size_t j = 0; j < u.ncols(); j++) {
+        sOrigin(0,j) = Po(0,j) + u(0,j)*s;
+        lOrigin(0,j) = Qo(0,j) + v(0,j)*l;
+    }
+
+    util::matrix_t<double> pfdiff, qfdiff, podiff, qodiff;
+    diffrows(Pf, sOrigin, pfdiff);
+    diffrows(Qf, lOrigin, qfdiff);
+    diffrows(Po, sOrigin, podiff);
+    diffrows(Qo, lOrigin, qodiff);
+
+    double s_toEnd = mag_vect(pfdiff);
+    double l_toEnd = mag_vect(qfdiff);
+
+    // unit vectors point from parameter origin to furthest of the two vertices
+    if (abs(s) < s_toEnd) {
+        norm3Dvect(pfdiff, sHat);
+    }
+    else {
+        norm3Dvect(podiff, sHat);
+    }
+    if (abs(l) < l_toEnd) {
+        norm3Dvect(qfdiff, lHat);
+    }
+    else {
+        norm3Dvect(qodiff, lHat);
+    }
+
+}
+
+void C_cavity_receiver::polygon_normal_and_area(const util::matrix_t<double>& poly_a,
+    util::matrix_t<double>& norm_vect, double& area, int& n_rows)
+{
+    double almostZero = 1.E-9;
+
+    int N = poly_a.nrows();
+    n_rows = N;
+    int n_verts = poly_a.ncols();
+
+    if (n_verts != 3) {
+        throw(C_csp_exception("viewFactor: requires 3 dimensions for each vertex"));
+    }
+
+    if (N < 3) {
+        throw(C_csp_exception("viewFactor: need at least 3 vertices for a polygon"));
+    }
+
+    util::matrix_t<double> diff1, diff2, nHat_A, diff_local;
+    diffrows(poly_a.row(1), poly_a.row(0), diff1);
+    diffrows(poly_a.row(2), poly_a.row(0), diff2);
+    crossproduct(diff1, diff2, norm_vect);
+    norm3Dvect(norm_vect, nHat_A);
+
+    // test for coplanar vertices
+    if (N == 3) {   // test automatically satisfied
+        area = mag_vect(norm_vect) / 2.0;
+    }
+    else {
+        for (size_t i = 0; i < N; i++) {
+            // the triple product of any combination of vertices must be zero
+            // for the polygon to be planar
+            diffrows(poly_a.row(i), poly_a.row(0), diff_local);
+            double volume = abs(dotprod3D(norm_vect, diff_local));
+            if (volume > almostZero) {
+                throw(C_csp_exception("viewFactor: input 1 vertices not coplanar"));
+            }
+        }
+        if (N == 4) {
+            diffrows(poly_a.row(3), poly_a.row(1), diff_local);
+            util::matrix_t<double> cross_local;
+            crossproduct(diff2, diff_local, cross_local);
+            area = mag_vect(cross_local) / 2.0;
+        }
+        else {
+            util::matrix_t<double> poly_a_looped = poly_a;
+            poly_a_looped.resize_preserve(poly_a.nrows() + 1, poly_a.ncols(), std::numeric_limits<double>::quiet_NaN());
+            for (size_t j = 0; j < poly_a_looped.ncols(); j++) {
+                poly_a_looped(poly_a_looped.nrows() - 1, j) = poly_a(0, j);
+            }
+            util::matrix_t<double> toSum(1, 3, 0.0);
+            util::matrix_t<double> cross_i;
+            for (size_t i = 0; i < N; i++) {
+                crossproduct(poly_a_looped.row(i), poly_a_looped.row(i + 1), cross_i);
+                for (size_t j = 0; j < 3; j++) {
+                    toSum(0, j) += cross_i(0, j);
+                }
+            }
+            area = dotprod3D(nHat_A, toSum) / 2.0;
+        }
+    }
+}
+
 void C_cavity_receiver::meshPolygon(const util::matrix_t<double>& poly, double elemSize)
 {
     double almostZero = 1.E-7;
@@ -1559,6 +1992,22 @@ int C_cavity_receiver::max_int_first_column(const util::matrix_t<int>& a)
     return maxval;
 }
 
+bool C_cavity_receiver::are_rows_equal(const util::matrix_t<double>& a, const util::matrix_t<double>& b, int i_row)
+{
+    size_t n_col_a = a.ncols();
+    size_t n_col_b = b.ncols();
+    if (n_col_a != n_col_b) {
+        return false;
+    }
+    for (size_t j = 0; j < n_col_a; j++) {
+        if (a(i_row, j) != b(i_row, j)) {
+            return false;
+        }
+    }
+
+    return true;
+}
+
 void C_cavity_receiver::min_max_vects_from_columns(const util::matrix_t<double>& a, util::matrix_t<double>& max_vect, util::matrix_t<double>& min_vect)
 {
     size_t ncols = a.ncols();
@@ -1604,6 +2053,8 @@ void C_cavity_receiver::init()
     surfValuesToElems();
 
     zigzagRouting(pipeWindings);
+
+    VFMatrix();
 
 	return;
 }
