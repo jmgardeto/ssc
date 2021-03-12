@@ -82,6 +82,23 @@ void C_cavity_receiver::genOctCavity(double height /*m*/, double width /*m*/,
     mv_rec_surfs[PANEL3].is_flipRoute = true;
     mv_rec_surfs[PANEL4].is_flipRoute = false;
 
+    size_t n_surfs = mv_rec_surfs.size();
+    for (size_t i = 0; i < n_surfs; i++) {
+        if (i == APERTURE) {
+            mv_rec_surfs[i].eps_sol = 1.0;
+            mv_rec_surfs[i].eps_therm = 1.0;
+        }
+        else {
+            if (mv_rec_surfs[i].is_active_surf) {
+                mv_rec_surfs[i].eps_sol = e_act_sol;        //[-]
+                mv_rec_surfs[i].eps_therm = e_act_therm;    //[-]
+            }
+            else {
+                mv_rec_surfs[i].eps_sol = e_pass_sol;       //[-]
+                mv_rec_surfs[i].eps_therm = e_pass_therm;   //[-]
+            }
+        }
+    }
 
     //// hardcode top and bottom lip for now
     //double lipTop = 0.0;
@@ -414,7 +431,7 @@ void C_cavity_receiver::surfValuesToElems()
 
     int lastElemID = 0;
     size_t n_surfs = mv_rec_surfs.size();
-    std::vector<util::matrix_t<bool>> value(mv_rec_surfs.size());
+    std::vector<util::matrix_t<bool>> is_active_value(mv_rec_surfs.size());
 
     util::matrix_t<bool> temp;
     for (size_t i_surf = 0; i_surf < n_surfs; i_surf++) {
@@ -425,21 +442,25 @@ void C_cavity_receiver::surfValuesToElems()
             // elements
             int nElems = m_v_elems[i_surf].nrows();
             temp.resize_fill(nElems, 1, mv_rec_surfs[i_surf].is_active_surf);
-            value[i_surf] = temp;
+            is_active_value[i_surf] = temp;
             lastElemID += nElems;
         }
     }
 
     // Combine local vectors into global vector
     m_globalValues.resize_fill(lastElemID, 1, false);
+    m_epsilonSol.resize_fill(lastElemID, 1, std::numeric_limits<double>::quiet_NaN());
+    m_epsilonTherm.resize_fill(lastElemID, 1, std::numeric_limits<double>::quiet_NaN());
     lastElemID = 0;
     for (size_t i_surf = 0; i_surf < n_surfs; i_surf++) {
 
         // skip i_surf if surface not defined (e.g. no lip)
         if (std::isfinite(mv_rec_surfs[i_surf].vertices(0, 0))) {
-            int nElems = value[i_surf].nrows();
+            int nElems = is_active_value[i_surf].nrows();
             for (size_t i = 0; i < nElems; i++) {
-                m_globalValues(i+lastElemID,0) = value[i_surf](i,0);                
+                m_globalValues(i+lastElemID,0) = is_active_value[i_surf](i,0);
+                m_epsilonSol(i+lastElemID,0) = mv_rec_surfs[i_surf].eps_sol;
+                m_epsilonTherm(i + lastElemID, 0) = mv_rec_surfs[i_surf].eps_therm;
             }
             lastElemID += nElems;
         }

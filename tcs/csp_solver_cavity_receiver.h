@@ -41,6 +41,8 @@ public:
         size_t type;
         bool is_active_surf;
         bool is_flipRoute;
+        double eps_sol;             //[-]
+        double eps_therm;           //[-]
 
         C_rec_surface()
         {
@@ -89,6 +91,8 @@ private:
     int m_nElems;
 
     util::matrix_t<bool> m_globalValues;
+    util::matrix_t<double> m_epsilonSol;
+    util::matrix_t<double> m_epsilonTherm;
 
     std::vector<util::matrix_t<int>> m_FCA;
 
