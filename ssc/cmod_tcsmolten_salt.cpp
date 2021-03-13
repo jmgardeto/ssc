@@ -626,17 +626,6 @@ public:
 
 	void exec() override
 	{
-
-        C_cavity_receiver c_cav_rec;
-        c_cav_rec.init();
-
-
-
-
-
-
-
-
         // Weather reader
 		C_csp_weatherreader weather_reader;
 		if (is_assigned("solar_resource_file")){
@@ -1605,6 +1594,14 @@ public:
         case var_receiver::REC_TYPE::FLAT_PLATE:
             A_rec = H_rec * D_rec;
             break;
+        }
+
+        bool is_cavity = true;
+        if (is_cavity) {
+            double hel_stow_deploy = as_double("hel_stow_deploy");          //[-]
+            double T_htf_hot_des = as_double("T_htf_hot_des") + 273.15;     //[K] convert from C
+            C_cavity_receiver c_cav_rec(hel_stow_deploy, T_htf_hot_des);
+            c_cav_rec.init();
         }
 
         std::unique_ptr<C_pt_receiver> receiver;

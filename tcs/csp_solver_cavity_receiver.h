@@ -65,6 +65,15 @@ public:
 
 private:
 
+    // ************************************
+    // Design parameters passed in through constructor
+    // ************************************
+    int m_field_fl;
+    util::matrix_t<double> m_field_fl_props;
+
+    double m_hel_stow_deploy;			//[-]
+    double m_T_salt_hot_target;         //[K]
+
     double receiverHeight; //[m] Receiver opening height in meters
     double receiverWidth; //[m] Reciever opening width in meters
     double topLipHeight;  //[m] Height of top lip in meters
@@ -73,13 +82,10 @@ private:
     double e_pass_sol;    //[-] Absorbtivity in short wave range for passive surfaces
     double e_act_therm;   //[-] Emissivity in long wave range for active surfaces
     double e_pass_therm;  //[-] Emissivity in long wave range for passive surfaces
-    //double T_HTFin;       // Inlet heat transfer fluid temperature
-    //double T_HTFout;      // Outlet heat transfer fluid temperature
-    //double T_inf;         // Temperature of surroundings
-    //double UA_elemental;  // Specified conductance from HTF to each element
-    //double flux_elemental;// Specified incident solar flux on each element
-    //double h;             // Convective heat transfer coefficients per element
+    // ************************************
 
+    // ************************************
+    // Calculated stored parameters
     std::vector<C_rec_surface> mv_rec_surfs;
     std::vector<util::matrix_t<int>> m_v_elems;
     util::matrix_t<double> m_nodesGlobal;
@@ -97,12 +103,21 @@ private:
     std::vector<util::matrix_t<int>> m_FCA;
 
     util::matrix_t<double> m_F;
+    util::matrix_t<double> m_solarFlux;
+
+    // ************************************
+    // Call variables
+    double m_eta_field_iter_prev;	//[-] Efficiency from heliostat on last iteration. Maybe change if CR gets defocus signal from controller
+    double m_od_control;            //[-]
+
+    // ************************************
+    // State variables
 
 
 public:
 
 	// Methods
-	C_cavity_receiver();
+	C_cavity_receiver(double hel_stow_deploy /*-*/, double T_salt_hot_target /*K*/);
 
 	~C_cavity_receiver() {};
 

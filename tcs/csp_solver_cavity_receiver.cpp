@@ -42,9 +42,10 @@ bool sort_pair_ascending(pair<double,double> i, pair<double, double> j)
     }
 }
 
-C_cavity_receiver::C_cavity_receiver()
+C_cavity_receiver::C_cavity_receiver(double hel_stow_deploy /*-*/, double T_salt_hot_target /*K*/)
 {
-	
+    m_hel_stow_deploy = hel_stow_deploy;        //[-]
+    m_T_salt_hot_target = T_salt_hot_target;    //[K]
 }
 
 void C_cavity_receiver::genOctCavity(double height /*m*/, double width /*m*/,
@@ -2045,7 +2046,9 @@ void C_cavity_receiver::min_max_vects_from_columns(const util::matrix_t<double>&
 
 void C_cavity_receiver::init()
 {
-	ambient_air.SetFluid(ambient_air.Air);
+	// ******************************************
+    // Set up cavity geometry and view factors
+    // ******************************************
 
     receiverHeight = 12; // Receiver opening height in meters
     receiverWidth = 14; // Reciever opening width in meters
@@ -2056,12 +2059,6 @@ void C_cavity_receiver::init()
     e_pass_sol = 0.05; // Absorbtivity in short wave range for passive surfaces
     e_act_therm = 0.85; // Emissivity in long wave range for active surfaces
     e_pass_therm = 0.25; // Emissivity in long wave range for passive surfaces
-    //T_HTFin = 290 + 273.15; // Inlet heat transfer fluid temperature
-    //T_HTFout = 575 + 273.15; // Outlet heat transfer fluid temperature
-    //T_inf = 20 + 273.15; // Temperature of surroundings
-    //UA_elemental = 4000; // Specified conductance from HTF to each element
-    //flux_elemental = 388858.025; // Specified incident solar flux on each element
-    //h = 0; // Convective heat transfer coefficients per element
 
     size_t pipeWindings = 9;    // round(receiverHeight / min(elemSizes))
 
@@ -2077,6 +2074,49 @@ void C_cavity_receiver::init()
 
     VFMatrix();
 
+    m_solarFlux.resize_fill(m_areas.nrows(), 1, std::numeric_limits<double>::quiet_NaN());
+
+    // ********************************************
+    // ********************************************
+
+    // ********************************************
+    // Complete receiver initialization
+
+    ambient_air.SetFluid(ambient_air.Air);
+
+    // Declare instance of fluid class for FIELD fluid
+    if (m_field_fl != HTFProperties::User_defined && m_field_fl < HTFProperties::End_Library_Fluids)
+    {
+        if (!field_htfProps.SetFluid(m_field_fl))
+        {
+            throw(C_csp_exception("Receiver HTF code is not recognized", "MSPT receiver"));
+        }
+    }
+    else if (m_field_fl == HTFProperties::User_defined)
+    {
+        // Check that 'm_field_fl_props' is allocated and correct dimensions
+        int n_rows = (int)m_field_fl_props.nrows();
+        int n_cols = (int)m_field_fl_props.ncols();
+        if (n_rows > 2 && n_cols == 7)
+        {
+            if (!field_htfProps.SetUserDefinedFluid(m_field_fl_props))
+            {
+                error_msg = util::format(field_htfProps.UserFluidErrMessage(), n_rows, n_cols);
+                throw(C_csp_exception(error_msg, "MSPT receiver"));
+            }
+        }
+        else
+        {
+            error_msg = util::format("The user defined field HTF table must contain at least 3 rows and exactly 7 columns. The current table contains %d row(s) and %d column(s)", n_rows, n_cols);
+            throw(C_csp_exception(error_msg, "MSPT receiver"));
+        }
+    }
+    else
+    {
+        throw(C_csp_exception("Receiver HTF code is not recognized", "MSPT receiver"));
+    }
+
+
 	return;
 }
 
@@ -2085,6 +2125,74 @@ void C_cavity_receiver::call(const C_csp_weatherreader::S_outputs& weather,
 	const C_pt_receiver::S_inputs& inputs,
 	const C_csp_solver_sim_info& sim_info)
 {
+    // Get inputs
+    double field_eff = inputs.m_field_eff;					//[-]
+    const util::matrix_t<double>* flux_map_input = inputs.m_flux_map_input;
+    C_csp_collector_receiver::E_csp_cr_modes input_operation_mode = inputs.m_input_operation_mode;
+
+    // Get sim info 
+    double step = sim_info.ms_ts.m_step;			//[s]
+    double time = sim_info.ms_ts.m_time;	//[s]
+
+    // Get applicable htf state info
+    double T_salt_cold_in = htf_state_in.m_temp + 273.15;		//[K] convert from C
+    double T_amb = weather.m_tdry + 273.15;                     //[K] convert from C
+
+    // Read in remaining weather inputs from weather output structure
+    double zenith = weather.m_solzen;
+    double azimuth = weather.m_solazi;
+    double v_wind_10 = weather.m_wspd;
+    double I_bn = weather.m_beam;
+
+    bool rec_is_off = false;
+    bool rec_is_defocusing = false;
+    double field_eff_adj = 0.0;
+
+    // Do an initial check to make sure the solar position called is valid
+    // If it's not, return the output equal to zeros. Also check to make sure
+    // the solar flux is at a certain level, otherwise the correlations aren't valid
+    if (input_operation_mode == C_csp_collector_receiver::OFF)
+    {
+        rec_is_off = true;
+    }
+
+    if (zenith > (90.0 - m_hel_stow_deploy) || I_bn <= 1.E-6 || (zenith == 0.0 && azimuth == 180.0))
+    {
+        if (m_night_recirc == 1)
+        {
+            I_bn = 0.0;
+        }
+        else
+        {
+            m_mode = C_csp_collector_receiver::OFF;
+            rec_is_off = true;
+        }
+    }
+
+    double T_coolant_prop = (m_T_salt_hot_target + T_salt_cold_in) / 2.0;		//[K] The temperature at which the coolant properties are evaluated. Validated as constant (mjw)
+    double cp_htf = field_htfProps.Cp(T_coolant_prop) * 1000.0;						//[J/kg-K] Specific heat of the coolant
+
+    double W_dot_pump, DELTAP, Pres_D, u_coolant;
+    W_dot_pump = DELTAP = Pres_D = u_coolant = std::numeric_limits<double>::quiet_NaN();
+
+    if (field_eff < m_eta_field_iter_prev && m_od_control < 1.0)
+    {	// Suggests controller applied defocus, so reset *controller* defocus
+        m_od_control = fmin(m_od_control + (1.0 - field_eff / m_eta_field_iter_prev), 1.0);
+    }
+
+    if (!rec_is_off){
+
+    }
+    else {
+        // If receiver was off BEFORE startup deductions
+        m_mode = C_csp_collector_receiver::OFF;
+
+        // Include here outputs that are ONLY set to zero if receiver completely off, and not attempting to start-up
+        W_dot_pump = 0.0;
+        // Pressure drops
+        DELTAP = 0.0; Pres_D = 0.0; u_coolant = 0.0;
+    }
+
 	return;
 }
 
@@ -2109,6 +2217,9 @@ void C_cavity_receiver::converged()
 			"MSPT receiver converged method"));
 	}
 
+    // Reset call variables
+    m_od_control = 1.0;             //[-]
+    m_eta_field_iter_prev = 1.0;    //[-]
 }
 
 
