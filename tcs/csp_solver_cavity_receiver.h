@@ -72,7 +72,6 @@ private:
     util::matrix_t<double> m_field_fl_props;
 
     double m_hel_stow_deploy;			//[-]
-    double m_T_salt_hot_target;         //[K]
 
     double receiverHeight; //[m] Receiver opening height in meters
     double receiverWidth; //[m] Reciever opening width in meters
@@ -103,7 +102,11 @@ private:
     std::vector<util::matrix_t<int>> m_FCA;
 
     util::matrix_t<double> m_F;
-    util::matrix_t<double> m_solarFlux;
+
+    util::matrix_t<double> m_FHatS;
+    util::matrix_t<double> m_FHatT;
+
+    util::matrix_t<double> m_rhoSol;
 
     // ************************************
     // Call variables
@@ -112,12 +115,18 @@ private:
 
     // ************************************
     // State variables
+    // m_mode_prev and m_mode are members of parent class
+    double m_E_su_prev;         //[W-hr] Startup energy required at end of previous timestep
+    double m_E_su;              //[W-hr] Startup energy required calculated at end of current timestep
 
+    double m_t_su;          //[hr] Startup time requirement at end of previous timestep
+    double m_t_su_prev;     //[hr] Startup time requirement calculated at end of current timestep
 
 public:
 
 	// Methods
-	C_cavity_receiver(double hel_stow_deploy /*-*/, double T_salt_hot_target /*K*/);
+	C_cavity_receiver(double hel_stow_deploy /*-*/, double T_htf_hot_des /*K*/, double q_dot_rec_des /*MWt*/,
+        double rec_qf_delay /*-*/, double rec_su_delay /*hr*/);
 
 	~C_cavity_receiver() {};
 
@@ -152,6 +161,11 @@ public:
     void zigzagRouting(size_t n_steps);
 
     void VFMatrix();
+
+    void FHatMatrix(const util::matrix_t<double>& eps,
+        util::matrix_t<double>& F_hat, util::matrix_t<double>& rho);
+
+    void interpSolarFlux(const util::matrix_t<double>& fluxDist);
 
     void edgePairParameters(const util::matrix_t<double>& Po, const util::matrix_t<double>& Pf, const util::matrix_t<double>& Qo, const util::matrix_t<double>& Qf,
         double& D, util::matrix_t<double>& sOrigin, util::matrix_t<double>& sHat, util::matrix_t<double>& lHat, util::matrix_t<double>& lOrigin, bool& skew);

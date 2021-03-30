@@ -1600,8 +1600,19 @@ public:
         if (is_cavity) {
             double hel_stow_deploy = as_double("hel_stow_deploy");          //[-]
             double T_htf_hot_des = as_double("T_htf_hot_des") + 273.15;     //[K] convert from C
-            C_cavity_receiver c_cav_rec(hel_stow_deploy, T_htf_hot_des);
+            double q_rec_des = as_double("P_ref") / as_double("design_eff") * as_double("solarm");
+            double rec_su_delay = as_double("rec_su_delay");
+            double rec_qf_delay = as_double("rec_qf_delay");
+            C_cavity_receiver c_cav_rec(hel_stow_deploy, T_htf_hot_des, q_rec_des, rec_qf_delay, rec_su_delay);
+
             c_cav_rec.init();
+
+            C_csp_weatherreader::S_outputs weather;
+            C_csp_solver_htf_1state htf_state_in;
+            C_pt_receiver::S_inputs inputs;
+            C_csp_solver_sim_info sim_info;
+
+            c_cav_rec.call(weather, htf_state_in, inputs, sim_info);
         }
 
         std::unique_ptr<C_pt_receiver> receiver;

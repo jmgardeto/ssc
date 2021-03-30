@@ -29,6 +29,8 @@ OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "definitions.h"
 #include <math.h>
 
+#include <Eigen/Dense>
+
 bool sort_pair_ascending(pair<double,double> i, pair<double, double> j)
 {
     if (i.first > j.first) {
@@ -42,10 +44,14 @@ bool sort_pair_ascending(pair<double,double> i, pair<double, double> j)
     }
 }
 
-C_cavity_receiver::C_cavity_receiver(double hel_stow_deploy /*-*/, double T_salt_hot_target /*K*/)
+C_cavity_receiver::C_cavity_receiver(double hel_stow_deploy /*-*/, double T_htf_hot_des /*K*/, double q_dot_rec_des /*MWt*/,
+    double rec_qf_delay /*-*/, double rec_su_delay /*hr*/)
 {
-    m_hel_stow_deploy = hel_stow_deploy;        //[-]
-    m_T_salt_hot_target = T_salt_hot_target;    //[K]
+    m_hel_stow_deploy = hel_stow_deploy;    //[-]
+    m_T_htf_hot_des = T_htf_hot_des;        //[K]
+    m_q_rec_des = q_dot_rec_des*1.E6;       //[Wt]
+    m_rec_qf_delay = rec_qf_delay;          //[-]
+    m_rec_su_delay = rec_su_delay;          //[hr]
 }
 
 void C_cavity_receiver::genOctCavity(double height /*m*/, double width /*m*/,
@@ -491,7 +497,7 @@ void C_cavity_receiver::zigzagRouting(size_t n_steps)
 
         size_t nElems = m_surfIDs[i_surf].nrows();
 
-        util::matrix_t<int> FCM(nElems, nElems, 0.0);
+        util::matrix_t<int> FCM(nElems, nElems, -1);
         util::matrix_t<double> cents(nElems, 3, std::numeric_limits<double>::quiet_NaN());
 
         for (size_t i = 0; i < nElems; i++) {
@@ -636,7 +642,47 @@ void C_cavity_receiver::zigzagRouting(size_t n_steps)
         }
 
         m_FCA[i_surf] = FCM;
+
+        size_t j_col_nonzero = 0;
+        size_t n_rows = m_FCA[i_surf].nrows();
+
+        for (size_t j = 1; j < m_FCA[i_surf].ncols(); j++) {
+            bool is_non_zero = false;
+            for (size_t i = 0; i < n_rows; i++) {
+                if (m_FCA[i_surf](i, j) > -1) {
+                    is_non_zero = true;
+                    j_col_nonzero = j;
+                    break;
+                }
+            }
+            if (!is_non_zero) {
+                break;
+            }
+        }
+
+        size_t i_row_nonzero = 0;
+        size_t n_cols = m_FCA[i_surf].ncols();
+
+        for (size_t i = 1; i < n_rows; i++) {
+            bool is_non_zero = false;
+            for (size_t j = 0; j < n_cols; j++) {
+                if (m_FCA[i_surf](i, j) > -1) {
+                    is_non_zero = true;
+                    i_row_nonzero = i;
+                    break;
+                }
+            }
+            if (!is_non_zero) {
+                break;
+            }
+        }
+
+
+
+        m_FCA[i_surf].resize_preserve(i_row_nonzero + 1, j_col_nonzero + 1, -1);
     }
+
+    
 
     return;
 }
@@ -699,6 +745,62 @@ void C_cavity_receiver::VFMatrix()
     }
 
     return;
+}
+
+void C_cavity_receiver::FHatMatrix(const util::matrix_t<double>& eps,
+    util::matrix_t<double>& F_hat, util::matrix_t<double>& rho)
+{
+    rho.resize_fill(m_nElems, 1, std::numeric_limits<double>::quiet_NaN());
+    F_hat.resize_fill(m_nElems, m_nElems, std::numeric_limits<double>::quiet_NaN());
+
+    for (size_t i = 0; i < m_nElems; i++) {
+        rho(i,0) = 1.0 - eps(i,0);
+    }
+
+    util::matrix_t<double> A(m_nElems, m_nElems, 0.0);
+    for (size_t i = 0; i < m_nElems; i++) {
+        A(i,i) = 1.0;
+        for (size_t j = 0; j < m_nElems; j++) {
+            A(i,j) -= m_F(i,j)*rho(j,0);
+        }
+    }
+
+    Eigen::MatrixXd Ae(m_nElems, m_nElems);
+    for (size_t i = 0; i < m_nElems; i++) {
+        for (size_t j = 0; j < m_nElems; j++) {
+            Ae(i,j) = A(i,j);
+        }
+    }
+
+    Eigen::MatrixXd Fe(m_F.nrows(), m_F.ncols());
+    for (size_t i = 0; i < m_F.nrows(); i++) {
+        for (size_t j = 0; j < m_F.ncols(); j++) {
+            Fe(i,j) = m_F(i,j);
+        }
+    }
+
+    Eigen::MatrixXd F_hat_e = Ae.colPivHouseholderQr().solve(Fe);
+
+    for (size_t i = 0; i < m_nElems; i++) {
+        for (size_t j = 0; j < m_nElems; j++) {
+            F_hat(i, j) = F_hat_e(i, j);
+        }
+    }
+
+    return;
+}
+
+void C_cavity_receiver::interpSolarFlux(const util::matrix_t<double>& fluxDist)
+{
+    for (size_t i_panel = 0; i_panel < 4; i_panel++) {
+
+        util::matrix_t<double> panel = mv_rec_surfs[i_panel].vertices;
+        util::matrix_t<double> origin = panel.row(0);
+        util::matrix_t<double> xAxis, last_less_first, normal;
+        diffrows(panel.row(1), origin, xAxis);
+        diffrows(panel.row(panel.nrows()-1), origin, last_less_first);
+        crossproduct(xAxis, last_less_first, normal);
+    }
 }
 
 void C_cavity_receiver::viewFactor(const util::matrix_t<double>& poly_a, const util::matrix_t<double>& poly_b, double& F_AB, double& F_BA)
@@ -2062,6 +2164,9 @@ void C_cavity_receiver::init()
 
     size_t pipeWindings = 9;    // round(receiverHeight / min(elemSizes))
 
+    pipeWindings = 1;
+
+
     genOctCavity(receiverHeight, receiverWidth, topLipHeight, botLipHeight);
 
     meshGeometry();
@@ -2074,7 +2179,10 @@ void C_cavity_receiver::init()
 
     VFMatrix();
 
-    m_solarFlux.resize_fill(m_areas.nrows(), 1, std::numeric_limits<double>::quiet_NaN());
+    FHatMatrix(m_epsilonSol, m_FHatS, m_rhoSol);
+
+    util::matrix_t<double> rhoTherm;
+    FHatMatrix(m_epsilonTherm, m_FHatT, rhoTherm);
 
     // ********************************************
     // ********************************************
@@ -2116,6 +2224,10 @@ void C_cavity_receiver::init()
         throw(C_csp_exception("Receiver HTF code is not recognized", "MSPT receiver"));
     }
 
+    m_mode_prev = C_csp_collector_receiver::OFF;
+    m_od_control = 1.0;			                //[-] Additional defocusing for over-design conditions
+    m_E_su_prev = m_q_rec_des * m_rec_qf_delay;	//[W-hr] Startup energy
+    m_t_su_prev = m_rec_su_delay;				//[hr] Startup time requirement
 
 	return;
 }
@@ -2144,6 +2256,21 @@ void C_cavity_receiver::call(const C_csp_weatherreader::S_outputs& weather,
     double v_wind_10 = weather.m_wspd;
     double I_bn = weather.m_beam;
 
+
+
+    bool debugthis = true;
+    if (debugthis) {
+        zenith = 0.0;
+        azimuth = 0.0;
+        I_bn = 950.0;
+        input_operation_mode = C_csp_collector_receiver::E_csp_cr_modes::ON;
+        T_salt_cold_in = 563.15;
+        m_T_htf_hot_des = 848.15;
+        T_amb = 20 + 273.15;        //[K] Temperature of surroundings
+    }
+
+
+
     bool rec_is_off = false;
     bool rec_is_defocusing = false;
     double field_eff_adj = 0.0;
@@ -2169,7 +2296,7 @@ void C_cavity_receiver::call(const C_csp_weatherreader::S_outputs& weather,
         }
     }
 
-    double T_coolant_prop = (m_T_salt_hot_target + T_salt_cold_in) / 2.0;		//[K] The temperature at which the coolant properties are evaluated. Validated as constant (mjw)
+    double T_coolant_prop = (m_T_htf_hot_des + T_salt_cold_in) / 2.0;		//[K] The temperature at which the coolant properties are evaluated. Validated as constant (mjw)
     double cp_htf = field_htfProps.Cp(T_coolant_prop) * 1000.0;						//[J/kg-K] Specific heat of the coolant
 
     double W_dot_pump, DELTAP, Pres_D, u_coolant;
@@ -2180,7 +2307,127 @@ void C_cavity_receiver::call(const C_csp_weatherreader::S_outputs& weather,
         m_od_control = fmin(m_od_control + (1.0 - field_eff / m_eta_field_iter_prev), 1.0);
     }
 
-    if (!rec_is_off){
+    if (!rec_is_off) {
+
+        // Solve receiver performance
+        // Will handle receiver modes after solution
+
+        // get flux map from heliostat field class
+        //util::matrix_t<double> flux_map_input = *(inputs.m_flux_map_input);
+
+        //// test with matlab inputs
+        //flux_map_input.resize_fill(3, 3, std::numeric_limits<double>::quiet_NaN());
+        //flux_map_input(0, 0) = 4.E5 * 0.3;
+        //flux_map_input(0, 1) = 4.E5 * 0.6;
+        //flux_map_input(0, 2) = 4.E5 * 0.3;
+        //flux_map_input(1, 0) = 4.E5 * 0.6;
+        //flux_map_input(1, 1) = 4.E5 * 1.2;
+        //flux_map_input(1, 2) = 4.E5 * 0.6;
+        //flux_map_input(2, 0) = 4.E5 * 0.3;
+        //flux_map_input(2, 1) = 4.E5 * 0.6;
+        //flux_map_input(2, 2) = 4.E5 * 0.3;
+
+        //util::matrix_t<double> solarFlux(m_nElems, 1, std::numeric_limits<double>::quiet_NaN());
+
+        double flux_scale = 360000.0;       //[W/m2]
+        vector<double> solarFlux = vector<double>{ 0.60,
+            0.60,
+            0.80,
+            0.80,
+            1.00,
+            1.00,
+            0.80,
+            0.80,
+            0.60,
+            0.60,
+            0.60,
+            0.60,
+            0.80,
+            0.80,
+            1.00,
+            1.00,
+            0.80,
+            0.80,
+            0.60,
+            0.60,
+            0.60,
+            0.60,
+            0.80,
+            0.80,
+            1.00,
+            1.00,
+            0.80,
+            0.80,
+            0.60,
+            0.60,
+            0.60,
+            0.60,
+            0.80,
+            0.80,
+            1.00,
+            1.00,
+            0.80,
+            0.80,
+            0.60,
+            0.60,
+            0.00,
+            0.00,
+            0.00,
+            0.00,
+            0.00,
+            0.00,
+            0.00,
+            0.00,
+            0.00,
+            0.00,
+            0.00,
+            0.00,
+            0.00,
+            0.00,
+            0.00 };
+
+        for (size_t i = 0; i < solarFlux.size(); i++) {
+            solarFlux[i] *= flux_scale;
+        }
+
+        double UA_elemental = 4000;
+        util::matrix_t<double> UA(m_nElems, 1, std::numeric_limits<double>::quiet_NaN());
+        for (size_t i_surf = 0; i_surf < mv_rec_surfs.size(); i_surf++) {
+            for (size_t i = 0; i < m_v_elems[i_surf].nrows(); i++) {
+                UA(m_surfIDs[i_surf](i,0),0) = UA_elemental*(double)mv_rec_surfs[i_surf].is_active_surf;
+            }
+        }
+
+        util::matrix_t<double> T_HTF(m_nElems, 1, std::numeric_limits<double>::quiet_NaN());
+        size_t nPipes = m_FCA.size();
+
+        util::matrix_t<int> FCM;
+        for (size_t i_pipe = 0; i_pipe < nPipes; i_pipe++) {
+            FCM = m_FCA[i_pipe];
+
+            size_t nSteps = FCM.nrows();
+            std::vector<double> stepTemp(nSteps);
+            double deltaT = (m_T_htf_hot_des - T_salt_cold_in) / (double)(nSteps-1);
+            for (size_t i = 0; i < nSteps; i++) {
+                stepTemp[i] = T_salt_cold_in + deltaT*i;
+            }
+
+            for (size_t i = 0; i < nSteps; i++) {
+                for (size_t j = 0; j < FCM.ncols(); j++) {
+                    T_HTF(FCM(i, j), 0) = stepTemp[i];
+                }
+            }
+        }
+
+        
+
+        util::matrix_t<double> qIn(m_nElems, 1, std::numeric_limits<double>::quiet_NaN());
+        for (size_t i = 0; i < m_nElems; i++) {
+            qIn(i,0) = m_areas(i,0) * solarFlux[i];     //[W]
+            //for(size_t j = 0; j < )
+        }
+
+        double abca = 1.23;
 
     }
     else {
@@ -2216,6 +2463,17 @@ void C_cavity_receiver::converged()
 		throw(C_csp_exception("Receiver should only be run at STEADY STATE mode for estimating output. It must be run at a different mode before exiting a timestep",
 			"MSPT receiver converged method"));
 	}
+
+    if (m_mode == C_csp_collector_receiver::OFF){
+        m_E_su_prev = m_q_rec_des * m_rec_qf_delay;
+        m_t_su_prev = m_rec_su_delay;
+    }
+    else {
+        m_E_su_prev = m_E_su;
+        m_t_su_prev = m_t_su;
+    }
+
+    m_mode_prev = m_mode;
 
     // Reset call variables
     m_od_control = 1.0;             //[-]
