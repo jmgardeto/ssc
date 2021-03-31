@@ -20,6 +20,7 @@ SSC directly includes source code from three other open-source projects, and bui
 - [NLopt](https://nlopt.readthedocs.io/en/latest/) - code located [here](https://github.com/NREL/ssc/tree/develop/nlopt), [LGPL license](https://nlopt.readthedocs.io/en/latest/NLopt_License_and_Copyright/)
 - [lp_solve](http://lpsolve.sourceforge.net/5.5/) - code located [here](https://github.com/NREL/ssc/tree/develop/lpsolve), [LGPL license](https://www.gnu.org/licenses/old-licenses/lgpl-2.1.en.html)
 - [splinter](https://github.com/bgrimstad/splinter) - code located [here](https://github.com/NREL/ssc/tree/develop/splinter), [MPL license](https://github.com/bgrimstad/splinter/blob/master/LICENSE)
+- [eigen](https://gitlab.com/libeigen/eigen/-/releases/3.3.9) - code located [here](https://github.com/NREL/ssc/tree/salt_cavity_receiver/eigen-3.3.9), [MPL2 license](https://eigen.tuxfamily.org/index.php?title=Main_Page)
 
 
 To explore the code and understand the algorithms used in SSC, start by looking in the "SSC" project at the compute modules (files starting with cmod_) to find the compute module for the technology or financial model of interest.
