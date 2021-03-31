@@ -109,6 +109,9 @@ private:
     util::matrix_t<double> m_epsilonSol;
     util::matrix_t<double> m_epsilonTherm;
 
+    Eigen::MatrixXd mE_epsilonSol;
+    Eigen::MatrixXd mE_epsilonTherm;
+
     std::vector<util::matrix_t<int>> m_FCA;
 
     util::matrix_t<double> m_F;
@@ -116,11 +119,11 @@ private:
     util::matrix_t<double> m_FHatS;
     Eigen::MatrixXd mE_FHatS;
     util::matrix_t<double> m_FHatT;
-    //Eigen::MatrixXd mE_FHatT;
+    Eigen::MatrixXd mE_FHatT;
 
     util::matrix_t<double> m_rhoSol;
-    //Eigen::MatrixXd mE_rhoSol;
-    //Eigen::MatrixXd mE_rhoTherm;
+    Eigen::MatrixXd mE_rhoSol;
+    Eigen::MatrixXd mE_rhoTherm;
         
 
     // ************************************
@@ -178,7 +181,11 @@ public:
     void VFMatrix();
 
     void FHatMatrix(const util::matrix_t<double>& eps,
-        util::matrix_t<double>& F_hat, util::matrix_t<double>& rho);
+        util::matrix_t<double>& F_hat, util::matrix_t<double>& rho,
+        Eigen::MatrixXd& E_F_hat, Eigen::MatrixXd& E_rho);
+
+    void matrixt_to_eigen(const util::matrix_t<double>& matrixt,
+        Eigen::MatrixXd& eigenx);
 
     void interpSolarFlux(const util::matrix_t<double>& fluxDist);
 

@@ -754,13 +754,17 @@ void C_cavity_receiver::VFMatrix()
 }
 
 void C_cavity_receiver::FHatMatrix(const util::matrix_t<double>& eps,
-    util::matrix_t<double>& F_hat, util::matrix_t<double>& rho)
+    util::matrix_t<double>& F_hat, util::matrix_t<double>& rho,
+    Eigen::MatrixXd& E_F_hat, Eigen::MatrixXd& E_rho)
 {
     rho.resize_fill(m_nElems, 1, std::numeric_limits<double>::quiet_NaN());
     F_hat.resize_fill(m_nElems, m_nElems, std::numeric_limits<double>::quiet_NaN());
 
+    E_rho.resize(m_nElems, 1);
+
     for (size_t i = 0; i < m_nElems; i++) {
         rho(i,0) = 1.0 - eps(i,0);
+        E_rho(i,0) = rho(i,0);
     }
 
     util::matrix_t<double> A(m_nElems, m_nElems, 0.0);
@@ -785,15 +789,26 @@ void C_cavity_receiver::FHatMatrix(const util::matrix_t<double>& eps,
         }
     }
 
-    Eigen::MatrixXd F_hat_e = Ae.colPivHouseholderQr().solve(Fe);
+    E_F_hat = Ae.colPivHouseholderQr().solve(Fe);
 
     for (size_t i = 0; i < m_nElems; i++) {
         for (size_t j = 0; j < m_nElems; j++) {
-            F_hat(i, j) = F_hat_e(i, j);
+            F_hat(i, j) = E_F_hat(i, j);
         }
     }
 
     return;
+}
+
+void C_cavity_receiver::matrixt_to_eigen(const util::matrix_t<double>& matrixt,
+    Eigen::MatrixXd& eigenx)
+{
+    eigenx.resize(matrixt.nrows(), matrixt.ncols());
+    for (size_t i = 0; i < matrixt.nrows(); i++) {
+        for (size_t j = 0; j < matrixt.ncols(); j++) {
+            eigenx(i,j) = matrixt(i,j);
+        }
+    }
 }
 
 void C_cavity_receiver::interpSolarFlux(const util::matrix_t<double>& fluxDist)
@@ -2185,10 +2200,13 @@ void C_cavity_receiver::init()
 
     VFMatrix();
 
-    FHatMatrix(m_epsilonSol, m_FHatS, m_rhoSol);
+    FHatMatrix(m_epsilonSol, m_FHatS, m_rhoSol, mE_FHatS, mE_rhoSol);
 
     util::matrix_t<double> rhoTherm;
-    FHatMatrix(m_epsilonTherm, m_FHatT, rhoTherm);
+    FHatMatrix(m_epsilonTherm, m_FHatT, rhoTherm, mE_FHatT, mE_rhoTherm);
+
+    matrixt_to_eigen(m_epsilonSol, mE_epsilonSol);
+    matrixt_to_eigen(m_epsilonTherm, mE_epsilonTherm);
 
     // ********************************************
     // ********************************************
@@ -2439,17 +2457,26 @@ void C_cavity_receiver::call(const C_csp_weatherreader::S_outputs& weather,
 
         Eigen::MatrixXd EqIn = mE_areas.array() * EsolarFlux.array();
 
-        Eigen::MatrixXd mE_rhoSol(m_rhoSol.nrows(), m_rhoSol.ncols());
-        for (size_t i = 0; i < m_rhoSol.nrows(); i++) {
-            for (size_t j = 0; j < m_rhoSol.ncols(); j++) {
-                mE_rhoSol(i,j) = m_rhoSol(i,j);
+        Eigen::MatrixXd eq1 = (-EsolarFlux.array() * mE_areas.array() * mE_rhoSol.array());
+        Eigen::MatrixXd eq2(eq1.rows(), eq1.rows());
+        Eigen::MatrixXd epsS_square(eq1.rows(), eq1.rows());
+        for (size_t i = 0; i < eq2.rows(); i++) {
+            for (size_t j = 0; j < eq2.cols(); j++) {
+                eq2(i, j) = eq1(i, 0);
+                epsS_square(i,j) = mE_epsilonSol(i,0);
             }
         }
+        Eigen::MatrixXd eq3 = (eq2.array()*mE_FHatS.array()).matrix() * mE_epsilonSol;
 
-        util::matrix_t<double> qIn(m_nElems, 1, std::numeric_limits<double>::quiet_NaN());
-        for (size_t i = 0; i < m_nElems; i++) {
-            qIn(i,0) = m_areas(i,0) * solarFlux[i];     //[W]
-            //for(size_t j = 0; j < )
+        Eigen::MatrixXd eq4 = (epsS_square.array()*mE_FHatS.transpose().array()).matrix()*(EsolarFlux.array()*mE_areas.array()*mE_rhoSol.array()).matrix();
+
+        Eigen::MatrixXd EqSolOut = eq3 + eq4;
+
+        Eigen::MatrixXd E_b(EqIn.rows()-1,1);
+        Eigen::MatrixXd E_b_no_f_hat(EqIn.rows() - 1, 1);
+        for (size_t i = 0; i < EqIn.rows() - 1; i++) {
+            E_b(i,0) = (EqIn(i,0)+EqSolOut(i,0)) / (mE_epsilonTherm(i,0)*mE_areas(i,0)*CSP::sigma) +
+                    mE_epsilonTherm(m_nElems-1,0)*mE_FHatT(i,m_nElems-1)*pow(T_amb, 4);
         }
 
         double abca = 1.23;
