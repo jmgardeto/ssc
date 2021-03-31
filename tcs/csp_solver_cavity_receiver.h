@@ -29,6 +29,16 @@ OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "csp_solver_core.h"
 #include "csp_solver_pt_receiver.h"
 
+#include "../splinter/Core"
+#include "../splinter/LU"
+#include "../splinter/Cholesky"
+#include "../splinter/QR"
+#include "../splinter/SVD"
+#include "../splinter/Geometry"
+#include "../splinter/Eigenvalues"
+
+
+
 class C_cavity_receiver : public C_pt_receiver
 {
 public:
@@ -104,9 +114,14 @@ private:
     util::matrix_t<double> m_F;
 
     util::matrix_t<double> m_FHatS;
+    Eigen::MatrixXd mE_FHatS;
     util::matrix_t<double> m_FHatT;
+    //Eigen::MatrixXd mE_FHatT;
 
     util::matrix_t<double> m_rhoSol;
+    //Eigen::MatrixXd mE_rhoSol;
+    //Eigen::MatrixXd mE_rhoTherm;
+        
 
     // ************************************
     // Call variables

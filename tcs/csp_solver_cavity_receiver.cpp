@@ -29,7 +29,13 @@ OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "definitions.h"
 #include <math.h>
 
-#include <Eigen/Dense>
+#include "../splinter/Core"
+#include "../splinter/LU"
+#include "../splinter/Cholesky"
+#include "../splinter/QR"
+#include "../splinter/SVD"
+#include "../splinter/Geometry"
+#include "../splinter/Eigenvalues"
 
 bool sort_pair_ascending(pair<double,double> i, pair<double, double> j)
 {
@@ -2419,7 +2425,26 @@ void C_cavity_receiver::call(const C_csp_weatherreader::S_outputs& weather,
             }
         }
 
-        
+        Eigen::MatrixXd mE_areas(m_areas.nrows(), m_areas.ncols());
+        for (size_t i = 0; i < m_areas.nrows(); i++) {
+            for (size_t j = 0; j < m_areas.ncols(); j++) {
+                mE_areas(i,j) = m_areas(i,j);
+            }
+        }
+
+        Eigen::MatrixXd EsolarFlux(solarFlux.size(),1);
+        for (size_t i = 0; i < solarFlux.size(); i++) {
+            EsolarFlux(i,0) = solarFlux[i];
+        }
+
+        Eigen::MatrixXd EqIn = mE_areas.array() * EsolarFlux.array();
+
+        Eigen::MatrixXd mE_rhoSol(m_rhoSol.nrows(), m_rhoSol.ncols());
+        for (size_t i = 0; i < m_rhoSol.nrows(); i++) {
+            for (size_t j = 0; j < m_rhoSol.ncols(); j++) {
+                mE_rhoSol(i,j) = m_rhoSol(i,j);
+            }
+        }
 
         util::matrix_t<double> qIn(m_nElems, 1, std::numeric_limits<double>::quiet_NaN());
         for (size_t i = 0; i < m_nElems; i++) {
