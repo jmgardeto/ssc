@@ -102,6 +102,7 @@ private:
     util::matrix_t<int> m_elements;
     std::vector<util::matrix_t<int>> m_surfIDs;
     util::matrix_t<double> m_areas;
+    Eigen::MatrixXd mE_areas;
     util::matrix_t<double> m_centroids;
     int m_nElems;
 
@@ -186,6 +187,8 @@ public:
 
     void matrixt_to_eigen(const util::matrix_t<double>& matrixt,
         Eigen::MatrixXd& eigenx);
+
+    void hbarCorrelation(const Eigen::MatrixXd& T, double T_inf, Eigen::MatrixXd& h);
 
     void interpSolarFlux(const util::matrix_t<double>& fluxDist);
 

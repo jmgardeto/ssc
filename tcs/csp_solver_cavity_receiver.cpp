@@ -811,6 +811,27 @@ void C_cavity_receiver::matrixt_to_eigen(const util::matrix_t<double>& matrixt,
     }
 }
 
+void C_cavity_receiver::hbarCorrelation(const Eigen::MatrixXd& T, double T_amb /*K*/, Eigen::MatrixXd& h)
+{
+    double A_total = mE_areas.sum() - mE_areas(mE_areas.rows()-1,0);
+
+    double T_avg = 0.0;
+    for (size_t i = 0; i < mE_areas.rows() - 1; i++) {
+        T_avg += T(i,0)*(mE_areas(i,0)/A_total);
+    }
+
+    // Siebers and Kraabel
+    double beta = 1.0 / T_amb;
+    double nu = 1.03450643178104E-17*pow(T_amb,4) - 4.85019754418772E-14*pow(T_amb,3) + 1.3580075963433E-10*pow(T_amb,2)
+                        + 2.27985665430374E-8*T_amb - 2.0313337298359E-6;
+    double k = -1.24607229972985E-16*pow(T_amb,4) + 5.01096786429384E-12*pow(T_amb,3) - 2.940474355754410E-8*pow(T_amb,2)
+                        + 9.05978900277077E-5*T_amb + 9.82003734668099E-4;
+    double Gr = (CSP::grav * beta * (T_avg - T_amb) * pow(receiverHeight,3)) / pow(nu,2);
+    double Nuss = 0.088*pow(Gr,(1./3.)) * pow((T_avg / T_amb),0.18);
+
+    h.setConstant(mE_areas.rows() - 1, 1, (Nuss*k) / receiverHeight * 1.0);
+}
+
 void C_cavity_receiver::interpSolarFlux(const util::matrix_t<double>& fluxDist)
 {
     for (size_t i_panel = 0; i_panel < 4; i_panel++) {
@@ -2207,6 +2228,7 @@ void C_cavity_receiver::init()
 
     matrixt_to_eigen(m_epsilonSol, mE_epsilonSol);
     matrixt_to_eigen(m_epsilonTherm, mE_epsilonTherm);
+    matrixt_to_eigen(m_areas, mE_areas);
 
     // ********************************************
     // ********************************************
@@ -2422,7 +2444,7 @@ void C_cavity_receiver::call(const C_csp_weatherreader::S_outputs& weather,
             }
         }
 
-        util::matrix_t<double> T_HTF(m_nElems, 1, std::numeric_limits<double>::quiet_NaN());
+        util::matrix_t<double> T_HTF(m_nElems, 1, 0.0);
         size_t nPipes = m_FCA.size();
 
         util::matrix_t<int> FCM;
@@ -2443,12 +2465,12 @@ void C_cavity_receiver::call(const C_csp_weatherreader::S_outputs& weather,
             }
         }
 
-        Eigen::MatrixXd mE_areas(m_areas.nrows(), m_areas.ncols());
+        /*Eigen::MatrixXd mE_areas(m_areas.nrows(), m_areas.ncols());
         for (size_t i = 0; i < m_areas.nrows(); i++) {
             for (size_t j = 0; j < m_areas.ncols(); j++) {
                 mE_areas(i,j) = m_areas(i,j);
             }
-        }
+        }*/
 
         Eigen::MatrixXd EsolarFlux(solarFlux.size(),1);
         for (size_t i = 0; i < solarFlux.size(); i++) {
@@ -2473,10 +2495,98 @@ void C_cavity_receiver::call(const C_csp_weatherreader::S_outputs& weather,
         Eigen::MatrixXd EqSolOut = eq3 + eq4;
 
         Eigen::MatrixXd E_b(EqIn.rows()-1,1);
-        Eigen::MatrixXd E_b_no_f_hat(EqIn.rows() - 1, 1);
         for (size_t i = 0; i < EqIn.rows() - 1; i++) {
             E_b(i,0) = (EqIn(i,0)+EqSolOut(i,0)) / (mE_epsilonTherm(i,0)*mE_areas(i,0)*CSP::sigma) +
                     mE_epsilonTherm(m_nElems-1,0)*mE_FHatT(i,m_nElems-1)*pow(T_amb, 4);
+        }
+
+        Eigen::MatrixXd E_eye = Eigen::MatrixXd::Identity(m_nElems-1,m_nElems-1);
+
+        Eigen::MatrixXd E_epsT_trans = mE_epsilonTherm.transpose();
+        E_epsT_trans.conservativeResize(m_nElems - 1, m_nElems - 1);
+        for (size_t i = 0; i < m_nElems - 1; i++) {
+            for (size_t j = 0; j < m_nElems - 1; j++) {
+                E_epsT_trans(i,j) = E_epsT_trans(0,j);
+            }
+        }
+
+        Eigen::MatrixXd E_A_1 = -1.0*E_epsT_trans.array()* mE_FHatT.block(0, 0, m_nElems - 1, m_nElems-1).array();
+
+        Eigen::MatrixXd E_A_2 = mE_FHatT.block(0, 0, m_nElems - 1, m_nElems) * mE_epsilonTherm;
+        Eigen::MatrixXd E_A_2_square(E_A_2.rows(), E_A_2.rows());
+        for (size_t i = 0; i < E_A_2_square.rows(); i++) {
+            for (size_t j = 0; j < E_A_2_square.rows(); j++) {
+                E_A_2_square(i,j) = E_A_2(i,0);
+            }
+        }
+        Eigen::MatrixXd E_A_3 = E_A_2_square.array()*E_eye.array();
+        Eigen::MatrixXd E_A = E_A_1 + E_A_3;
+
+        Eigen::MatrixXd E_Tmax1 = E_A.colPivHouseholderQr().solve(E_b);
+        Eigen::MatrixXd E_Tmax = Eigen::pow(E_Tmax1.array(), 0.25);
+
+        E_Tmax.conservativeResize(m_nElems, 1);
+        E_Tmax(m_nElems-1,0) = T_amb;
+
+        Eigen::MatrixXd E_h;
+        hbarCorrelation(E_Tmax, T_amb, E_h);
+
+        // iterate through total energy balance until temperatures converge
+        Eigen::MatrixXd E_T = E_Tmax;
+        double error_T = 1.0;
+
+        double tol = 1.E-4;
+
+        Eigen::MatrixXd E_Tstar;
+        while (error_T > tol) {
+
+            E_Tstar = E_T;
+            
+            Eigen::MatrixXd E_Tstar_2 = Eigen::pow(E_Tstar.array(), 2);
+            Eigen::MatrixXd E_Tstar_trans = E_Tstar.transpose();
+            Eigen::MatrixXd E_Tstar_trans2 = Eigen::pow(E_Tstar_trans.array(), 2);
+            Eigen::MatrixXd A_1(m_nElems-1, m_nElems-1);
+            Eigen::MatrixXd A_2(m_nElems-1, m_nElems-1);
+            Eigen::MatrixXd A_3(m_nElems-1, m_nElems);
+            Eigen::MatrixXd B_1(m_nElems-1,1);
+            Eigen::MatrixXd B_2(m_nElems-1,1);
+            Eigen::MatrixXd B_3(m_nElems-1,1);
+            for (size_t i = 0; i < m_nElems - 1; i++) {
+                for (size_t j = 0; j < m_nElems - 1; j++) {
+                    A_1(i,j) = -mE_epsilonTherm(j,0)*mE_FHatT(i,j)*(E_Tstar_2(i,0) + E_Tstar_trans2(0,j))*(E_Tstar(i,0) + E_Tstar_trans(0,j));
+                    A_2(i,j) = (UA(i,0) + E_h(i,0)) / (mE_epsilonTherm(i,0)*CSP::sigma);
+                }
+                for (size_t j = 0; j < m_nElems; j++) {
+                    A_3(i,j) = (E_Tstar_2(i,0) + E_Tstar_trans2(0,j))*(E_Tstar(i,0) + E_Tstar_trans(0,j))*mE_FHatT(i,j);
+                }
+                B_1(i,0) = (EqIn(i,0) + EqSolOut(i,0))/(mE_epsilonTherm(i,0)*mE_areas(i,0)*CSP::sigma);
+                B_2(i,0) = mE_epsilonTherm(m_nElems-1,0)*mE_FHatT(i,m_nElems-1)*T_amb*(E_Tstar_2(i,0)+pow(T_amb,2))*(E_Tstar(i,0)+T_amb);
+                B_3(i,0) = (E_h(i,0)*T_amb + UA(i,0)*T_HTF(i,0)) / (mE_epsilonTherm(i,0)*CSP::sigma);
+            }
+
+            Eigen::MatrixXd A_4 = A_3 * mE_epsilonTherm;
+            Eigen::MatrixXd A_4_square(A_4.rows(), A_4.rows());
+            for (size_t i = 0; i < A_4.rows(); i++) {
+                for (size_t j = 0; j < A_4.rows(); j++) {
+                    A_4_square(i,j) = A_4(i,0);
+                }
+            }
+
+            Eigen::MatrixXd A = A_1.array() + (A_2 + A_4_square).array()*E_eye.array();
+
+            Eigen::MatrixXd B = B_1 + B_2 + B_3;
+
+            E_T = A.colPivHouseholderQr().solve(B);
+            E_T.conservativeResize(m_nElems, 1);
+            E_T(m_nElems-1,0) = T_amb;
+
+            // Update convective correlation
+            hbarCorrelation(E_T, T_amb, E_h);
+
+            error_T = 0.0;
+            for (size_t i = 0; i < m_nElems; i++) {
+                error_T = max(error_T, abs(E_T(i,0) - E_Tstar(i,0))/E_T(i,0));
+            }
         }
 
         double abca = 1.23;
