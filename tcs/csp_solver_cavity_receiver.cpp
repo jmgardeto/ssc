@@ -2437,14 +2437,17 @@ void C_cavity_receiver::call(const C_csp_weatherreader::S_outputs& weather,
         }
 
         double UA_elemental = 4000;
-        util::matrix_t<double> UA(m_nElems, 1, std::numeric_limits<double>::quiet_NaN());
+        Eigen::MatrixXd E_UA(m_nElems, 1);
+        E_UA.setConstant(std::numeric_limits<double>::quiet_NaN());
+        //util::matrix_t<double> UA(m_nElems, 1, std::numeric_limits<double>::quiet_NaN());
         for (size_t i_surf = 0; i_surf < mv_rec_surfs.size(); i_surf++) {
             for (size_t i = 0; i < m_v_elems[i_surf].nrows(); i++) {
-                UA(m_surfIDs[i_surf](i,0),0) = UA_elemental*(double)mv_rec_surfs[i_surf].is_active_surf;
+                E_UA(m_surfIDs[i_surf](i,0),0) = UA_elemental*(double)mv_rec_surfs[i_surf].is_active_surf;
             }
         }
 
-        util::matrix_t<double> T_HTF(m_nElems, 1, 0.0);
+        //util::matrix_t<double> T_HTF(m_nElems, 1, 0.0);
+        Eigen::MatrixXd E_T_HTF = Eigen::MatrixXd::Zero(m_nElems, 1);
         size_t nPipes = m_FCA.size();
 
         util::matrix_t<int> FCM;
@@ -2460,7 +2463,7 @@ void C_cavity_receiver::call(const C_csp_weatherreader::S_outputs& weather,
 
             for (size_t i = 0; i < nSteps; i++) {
                 for (size_t j = 0; j < FCM.ncols(); j++) {
-                    T_HTF(FCM(i, j), 0) = stepTemp[i];
+                    E_T_HTF(FCM(i, j), 0) = stepTemp[i];
                 }
             }
         }
@@ -2554,14 +2557,14 @@ void C_cavity_receiver::call(const C_csp_weatherreader::S_outputs& weather,
             for (size_t i = 0; i < m_nElems - 1; i++) {
                 for (size_t j = 0; j < m_nElems - 1; j++) {
                     A_1(i,j) = -mE_epsilonTherm(j,0)*mE_FHatT(i,j)*(E_Tstar_2(i,0) + E_Tstar_trans2(0,j))*(E_Tstar(i,0) + E_Tstar_trans(0,j));
-                    A_2(i,j) = (UA(i,0) + E_h(i,0)) / (mE_epsilonTherm(i,0)*CSP::sigma);
+                    A_2(i,j) = (E_UA(i,0) + E_h(i,0)) / (mE_epsilonTherm(i,0)*CSP::sigma);
                 }
                 for (size_t j = 0; j < m_nElems; j++) {
                     A_3(i,j) = (E_Tstar_2(i,0) + E_Tstar_trans2(0,j))*(E_Tstar(i,0) + E_Tstar_trans(0,j))*mE_FHatT(i,j);
                 }
                 B_1(i,0) = (EqIn(i,0) + EqSolOut(i,0))/(mE_epsilonTherm(i,0)*mE_areas(i,0)*CSP::sigma);
                 B_2(i,0) = mE_epsilonTherm(m_nElems-1,0)*mE_FHatT(i,m_nElems-1)*T_amb*(E_Tstar_2(i,0)+pow(T_amb,2))*(E_Tstar(i,0)+T_amb);
-                B_3(i,0) = (E_h(i,0)*T_amb + UA(i,0)*T_HTF(i,0)) / (mE_epsilonTherm(i,0)*CSP::sigma);
+                B_3(i,0) = (E_h(i,0)*T_amb + E_UA(i,0)* E_T_HTF(i,0)) / (mE_epsilonTherm(i,0)*CSP::sigma);
             }
 
             Eigen::MatrixXd A_4 = A_3 * mE_epsilonTherm;
@@ -2588,6 +2591,14 @@ void C_cavity_receiver::call(const C_csp_weatherreader::S_outputs& weather,
                 error_T = max(error_T, abs(E_T(i,0) - E_Tstar(i,0))/E_T(i,0));
             }
         }
+
+        Eigen::MatrixXd E_Q_gain = E_UA.array()*mE_areas.array()*(E_T.array() - E_T_HTF.array());
+
+
+
+
+
+
 
         double abca = 1.23;
 
