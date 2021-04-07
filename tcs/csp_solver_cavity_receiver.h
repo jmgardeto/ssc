@@ -145,7 +145,7 @@ public:
 
 	// Methods
 	C_cavity_receiver(double hel_stow_deploy /*-*/, double T_htf_hot_des /*K*/, double q_dot_rec_des /*MWt*/,
-        double rec_qf_delay /*-*/, double rec_su_delay /*hr*/);
+        double rec_qf_delay /*-*/, double rec_su_delay /*hr*/, int field_fl /*-*/, util::matrix_t<double> field_fl_props );
 
 	~C_cavity_receiver() {};
 

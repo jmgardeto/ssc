@@ -1603,7 +1603,8 @@ public:
             double q_rec_des = as_double("P_ref") / as_double("design_eff") * as_double("solarm");
             double rec_su_delay = as_double("rec_su_delay");
             double rec_qf_delay = as_double("rec_qf_delay");
-            C_cavity_receiver c_cav_rec(hel_stow_deploy, T_htf_hot_des, q_rec_des, rec_qf_delay, rec_su_delay);
+
+            C_cavity_receiver c_cav_rec(hel_stow_deploy, T_htf_hot_des, q_rec_des, rec_qf_delay, rec_su_delay, as_integer("rec_htf"), as_matrix("field_fl_props"));
 
             c_cav_rec.init();
 

@@ -51,13 +51,16 @@ bool sort_pair_ascending(pair<double,double> i, pair<double, double> j)
 }
 
 C_cavity_receiver::C_cavity_receiver(double hel_stow_deploy /*-*/, double T_htf_hot_des /*K*/, double q_dot_rec_des /*MWt*/,
-    double rec_qf_delay /*-*/, double rec_su_delay /*hr*/)
+    double rec_qf_delay /*-*/, double rec_su_delay /*hr*/, int field_fl /*-*/, util::matrix_t<double> field_fl_props)
 {
     m_hel_stow_deploy = hel_stow_deploy;    //[-]
     m_T_htf_hot_des = T_htf_hot_des;        //[K]
     m_q_rec_des = q_dot_rec_des*1.E6;       //[Wt]
     m_rec_qf_delay = rec_qf_delay;          //[-]
     m_rec_su_delay = rec_su_delay;          //[hr]
+    m_field_fl = field_fl;                  //[-]
+    m_field_fl_props = field_fl_props;      //[-]
+
 }
 
 void C_cavity_receiver::genOctCavity(double height /*m*/, double width /*m*/,
@@ -2436,7 +2439,7 @@ void C_cavity_receiver::call(const C_csp_weatherreader::S_outputs& weather,
             solarFlux[i] *= flux_scale;
         }
 
-        double UA_elemental = 4000;
+        double UA_elemental = 4000;     //[W/K]
         Eigen::MatrixXd E_UA(m_nElems, 1);
         E_UA.setConstant(std::numeric_limits<double>::quiet_NaN());
         //util::matrix_t<double> UA(m_nElems, 1, std::numeric_limits<double>::quiet_NaN());
@@ -2450,8 +2453,8 @@ void C_cavity_receiver::call(const C_csp_weatherreader::S_outputs& weather,
         Eigen::MatrixXd E_T_HTF = Eigen::MatrixXd::Zero(m_nElems, 1);
         size_t nPipes = m_FCA.size();
 
-        util::matrix_t<int> FCM;
         for (size_t i_pipe = 0; i_pipe < nPipes; i_pipe++) {
+            util::matrix_t<int> FCM;
             FCM = m_FCA[i_pipe];
 
             size_t nSteps = FCM.nrows();
@@ -2592,15 +2595,83 @@ void C_cavity_receiver::call(const C_csp_weatherreader::S_outputs& weather,
             }
         }
 
-        Eigen::MatrixXd E_Q_gain = E_UA.array()*mE_areas.array()*(E_T.array() - E_T_HTF.array());
+        Eigen::MatrixXd E_Q_gain = E_UA.array()*mE_areas.array()*(E_T.array() - E_T_HTF.array());   //[W]
 
 
+        double q_gain_net = E_Q_gain.sum();
+        double m_dot = q_gain_net/(nPipes*cp_htf*(m_T_htf_hot_des - T_salt_cold_in));
+        std::vector<util::matrix_t<double>> mt_T;
 
+        double error_T_out = 100.0;
 
+        double tol_T_out = 0.1;
+        while (fabs(error_T_out) > tol_T_out) {
 
+            double mc = m_dot * cp_htf; //[kg/s * J/kg-K] = [W/K]
 
+            mt_T.resize(m_FCA.size());
 
-        double abca = 1.23;
+            Eigen::MatrixXd E_T_out_pipe = Eigen::MatrixXd::Zero(1, nPipes);
+
+            for (size_t k = 0; k < nPipes; k++) {
+                util::matrix_t<int> FCM = m_FCA[k];
+
+                // padding -1 (matlab uses 0) should have been removed in zigzag method
+                size_t nSteps = FCM.nrows();
+                mt_T[k].resize(nSteps,1);
+                Eigen::MatrixXd k_b = Eigen::MatrixXd::Zero(nSteps, 1);
+
+                Eigen::MatrixXd k_a1 = Eigen::MatrixXd::Zero(nSteps, nSteps);
+                k_a1.diagonal(-1).setConstant(1);
+                Eigen::MatrixXd k_a2 = Eigen::MatrixXd::Identity(nSteps, nSteps);
+                Eigen::MatrixXd k_A = mc * (k_a2.array() - k_a1.array());
+
+                // Extract conduction rates
+                for (size_t i = 0; i < nSteps; i++) {
+                    util::matrix_t<int> step_IDs = FCM.row(i);
+                    for (size_t j = 0; j < step_IDs.ncols(); j++) {
+                        if (step_IDs(0,j) != -1) {
+                            k_b(i,0) += E_Q_gain(step_IDs(0,j));
+                        }
+                    }
+                }
+
+                k_b(0,0) += mc*T_salt_cold_in;
+
+                // Solve energy balance for this pipe
+                Eigen::MatrixXd E_T_step = k_A.colPivHouseholderQr().solve(k_b);
+
+                E_T_out_pipe(0,k) = E_T_step(nSteps-1,0);
+
+                for (size_t ii = 0; ii < nSteps; ii++) {
+                    mt_T[k](ii,0) = E_T_step(ii,0);
+                }
+            }
+
+            double T_out = E_T_out_pipe.mean();         //[K]
+            error_T_out = T_out - m_T_htf_hot_des;      //[K]
+
+            // adjust value of m_dot - usually not needed
+            double q_gain_total_new = m_dot*cp_htf*nPipes*(T_out - T_salt_cold_in); //[W]
+            m_dot = q_gain_total_new / (nPipes*cp_htf*(m_T_htf_hot_des-T_salt_cold_in));
+        }
+
+        Eigen::MatrixXd E_T_HTF_calc = Eigen::MatrixXd::Zero(m_nElems, 1);
+        // assign fluid temperatures based on solution
+        for (size_t k = 0; k < nPipes; k++) {
+            util::matrix_t<int> FCM = m_FCA[k];
+
+            // padding -1 (matlab uses 0) should have been removed in zigzag method
+            size_t nSteps = FCM.nrows();
+            for (size_t i = 0; i < nSteps; i++) {
+                util::matrix_t<int> step_IDs = FCM.row(i);
+                for (size_t j = 0; j < step_IDs.ncols(); j++) {
+                    E_T_HTF_calc(step_IDs(0,j)) = mt_T[k](i,0);
+                }
+            }
+        }
+
+        double m_dot_total = m_dot * nPipes;
 
     }
     else {
