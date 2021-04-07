@@ -2439,17 +2439,22 @@ void C_cavity_receiver::call(const C_csp_weatherreader::S_outputs& weather,
             solarFlux[i] *= flux_scale;
         }
 
+        Eigen::MatrixXd EsolarFlux(solarFlux.size(), 1);
+        for (size_t i = 0; i < solarFlux.size(); i++) {
+            EsolarFlux(i, 0) = solarFlux[i];
+        }
+
+        // Assign conductance between HTF and each element
         double UA_elemental = 4000;     //[W/K]
         Eigen::MatrixXd E_UA(m_nElems, 1);
         E_UA.setConstant(std::numeric_limits<double>::quiet_NaN());
-        //util::matrix_t<double> UA(m_nElems, 1, std::numeric_limits<double>::quiet_NaN());
         for (size_t i_surf = 0; i_surf < mv_rec_surfs.size(); i_surf++) {
             for (size_t i = 0; i < m_v_elems[i_surf].nrows(); i++) {
                 E_UA(m_surfIDs[i_surf](i,0),0) = UA_elemental*(double)mv_rec_surfs[i_surf].is_active_surf;
             }
         }
 
-        //util::matrix_t<double> T_HTF(m_nElems, 1, 0.0);
+        // Initialize elemental heat transfer fluid temperatures
         Eigen::MatrixXd E_T_HTF = Eigen::MatrixXd::Zero(m_nElems, 1);
         size_t nPipes = m_FCA.size();
 
@@ -2469,18 +2474,6 @@ void C_cavity_receiver::call(const C_csp_weatherreader::S_outputs& weather,
                     E_T_HTF(FCM(i, j), 0) = stepTemp[i];
                 }
             }
-        }
-
-        /*Eigen::MatrixXd mE_areas(m_areas.nrows(), m_areas.ncols());
-        for (size_t i = 0; i < m_areas.nrows(); i++) {
-            for (size_t j = 0; j < m_areas.ncols(); j++) {
-                mE_areas(i,j) = m_areas(i,j);
-            }
-        }*/
-
-        Eigen::MatrixXd EsolarFlux(solarFlux.size(),1);
-        for (size_t i = 0; i < solarFlux.size(); i++) {
-            EsolarFlux(i,0) = solarFlux[i];
         }
 
         Eigen::MatrixXd EqIn = mE_areas.array() * EsolarFlux.array();
@@ -2534,145 +2527,164 @@ void C_cavity_receiver::call(const C_csp_weatherreader::S_outputs& weather,
         E_Tmax.conservativeResize(m_nElems, 1);
         E_Tmax(m_nElems-1,0) = T_amb;
 
-        Eigen::MatrixXd E_h;
-        hbarCorrelation(E_Tmax, T_amb, E_h);
 
-        // iterate through total energy balance until temperatures converge
-        Eigen::MatrixXd E_T = E_Tmax;
-        double error_T = 1.0;
+        // Start iteration between energy and fluid balances
+        double error_T_HTF = 100.;
+        int count = 0;
+        double tol_T_HTF = 0.1;
+        while (fabs(error_T_HTF) > tol_T_HTF) {
 
-        double tol = 1.E-4;
+            count++;
 
-        Eigen::MatrixXd E_Tstar;
-        while (error_T > tol) {
+            Eigen::MatrixXd E_h;
+            hbarCorrelation(E_Tmax, T_amb, E_h);
 
-            E_Tstar = E_T;
-            
-            Eigen::MatrixXd E_Tstar_2 = Eigen::pow(E_Tstar.array(), 2);
-            Eigen::MatrixXd E_Tstar_trans = E_Tstar.transpose();
-            Eigen::MatrixXd E_Tstar_trans2 = Eigen::pow(E_Tstar_trans.array(), 2);
-            Eigen::MatrixXd A_1(m_nElems-1, m_nElems-1);
-            Eigen::MatrixXd A_2(m_nElems-1, m_nElems-1);
-            Eigen::MatrixXd A_3(m_nElems-1, m_nElems);
-            Eigen::MatrixXd B_1(m_nElems-1,1);
-            Eigen::MatrixXd B_2(m_nElems-1,1);
-            Eigen::MatrixXd B_3(m_nElems-1,1);
-            for (size_t i = 0; i < m_nElems - 1; i++) {
-                for (size_t j = 0; j < m_nElems - 1; j++) {
-                    A_1(i,j) = -mE_epsilonTherm(j,0)*mE_FHatT(i,j)*(E_Tstar_2(i,0) + E_Tstar_trans2(0,j))*(E_Tstar(i,0) + E_Tstar_trans(0,j));
-                    A_2(i,j) = (E_UA(i,0) + E_h(i,0)) / (mE_epsilonTherm(i,0)*CSP::sigma);
+            // iterate through total energy balance until temperatures converge
+            Eigen::MatrixXd E_T = E_Tmax;
+            double error_T = 1.0;
+
+            double tol = 1.E-4;
+
+            Eigen::MatrixXd E_Tstar;
+            while (error_T > tol) {
+
+                E_Tstar = E_T;
+
+                Eigen::MatrixXd E_Tstar_2 = Eigen::pow(E_Tstar.array(), 2);
+                Eigen::MatrixXd E_Tstar_trans = E_Tstar.transpose();
+                Eigen::MatrixXd E_Tstar_trans2 = Eigen::pow(E_Tstar_trans.array(), 2);
+                Eigen::MatrixXd A_1(m_nElems - 1, m_nElems - 1);
+                Eigen::MatrixXd A_2(m_nElems - 1, m_nElems - 1);
+                Eigen::MatrixXd A_3(m_nElems - 1, m_nElems);
+                Eigen::MatrixXd B_1(m_nElems - 1, 1);
+                Eigen::MatrixXd B_2(m_nElems - 1, 1);
+                Eigen::MatrixXd B_3(m_nElems - 1, 1);
+                for (size_t i = 0; i < m_nElems - 1; i++) {
+                    for (size_t j = 0; j < m_nElems - 1; j++) {
+                        A_1(i, j) = -mE_epsilonTherm(j, 0) * mE_FHatT(i, j) * (E_Tstar_2(i, 0) + E_Tstar_trans2(0, j)) * (E_Tstar(i, 0) + E_Tstar_trans(0, j));
+                        A_2(i, j) = (E_UA(i, 0) + E_h(i, 0)) / (mE_epsilonTherm(i, 0) * CSP::sigma);
+                    }
+                    for (size_t j = 0; j < m_nElems; j++) {
+                        A_3(i, j) = (E_Tstar_2(i, 0) + E_Tstar_trans2(0, j)) * (E_Tstar(i, 0) + E_Tstar_trans(0, j)) * mE_FHatT(i, j);
+                    }
+                    B_1(i, 0) = (EqIn(i, 0) + EqSolOut(i, 0)) / (mE_epsilonTherm(i, 0) * mE_areas(i, 0) * CSP::sigma);
+                    B_2(i, 0) = mE_epsilonTherm(m_nElems - 1, 0) * mE_FHatT(i, m_nElems - 1) * T_amb * (E_Tstar_2(i, 0) + pow(T_amb, 2)) * (E_Tstar(i, 0) + T_amb);
+                    B_3(i, 0) = (E_h(i, 0) * T_amb + E_UA(i, 0) * E_T_HTF(i, 0)) / (mE_epsilonTherm(i, 0) * CSP::sigma);
                 }
-                for (size_t j = 0; j < m_nElems; j++) {
-                    A_3(i,j) = (E_Tstar_2(i,0) + E_Tstar_trans2(0,j))*(E_Tstar(i,0) + E_Tstar_trans(0,j))*mE_FHatT(i,j);
+
+                Eigen::MatrixXd A_4 = A_3 * mE_epsilonTherm;
+                Eigen::MatrixXd A_4_square(A_4.rows(), A_4.rows());
+                for (size_t i = 0; i < A_4.rows(); i++) {
+                    for (size_t j = 0; j < A_4.rows(); j++) {
+                        A_4_square(i, j) = A_4(i, 0);
+                    }
                 }
-                B_1(i,0) = (EqIn(i,0) + EqSolOut(i,0))/(mE_epsilonTherm(i,0)*mE_areas(i,0)*CSP::sigma);
-                B_2(i,0) = mE_epsilonTherm(m_nElems-1,0)*mE_FHatT(i,m_nElems-1)*T_amb*(E_Tstar_2(i,0)+pow(T_amb,2))*(E_Tstar(i,0)+T_amb);
-                B_3(i,0) = (E_h(i,0)*T_amb + E_UA(i,0)* E_T_HTF(i,0)) / (mE_epsilonTherm(i,0)*CSP::sigma);
+
+                Eigen::MatrixXd A = A_1.array() + (A_2 + A_4_square).array() * E_eye.array();
+
+                Eigen::MatrixXd B = B_1 + B_2 + B_3;
+
+                E_T = A.colPivHouseholderQr().solve(B);
+                E_T.conservativeResize(m_nElems, 1);
+                E_T(m_nElems - 1, 0) = T_amb;
+
+                // Update convective correlation
+                hbarCorrelation(E_T, T_amb, E_h);
+
+                error_T = 0.0;
+                for (size_t i = 0; i < m_nElems; i++) {
+                    error_T = max(error_T, abs(E_T(i, 0) - E_Tstar(i, 0)) / E_T(i, 0));
+                }
             }
 
-            Eigen::MatrixXd A_4 = A_3 * mE_epsilonTherm;
-            Eigen::MatrixXd A_4_square(A_4.rows(), A_4.rows());
-            for (size_t i = 0; i < A_4.rows(); i++) {
-                for (size_t j = 0; j < A_4.rows(); j++) {
-                    A_4_square(i,j) = A_4(i,0);
+            Eigen::MatrixXd E_Q_gain = E_UA.array() * mE_areas.array() * (E_T.array() - E_T_HTF.array());   //[W]
+
+
+            double q_gain_net = E_Q_gain.sum();
+            double m_dot = q_gain_net / (nPipes * cp_htf * (m_T_htf_hot_des - T_salt_cold_in));
+            std::vector<util::matrix_t<double>> mt_T;
+
+            double error_T_out = 100.0;
+
+            double tol_T_out = 0.1;
+            while (fabs(error_T_out) > tol_T_out) {
+
+                double mc = m_dot * cp_htf; //[kg/s * J/kg-K] = [W/K]
+
+                mt_T.resize(m_FCA.size());
+
+                Eigen::MatrixXd E_T_out_pipe = Eigen::MatrixXd::Zero(1, nPipes);
+
+                for (size_t k = 0; k < nPipes; k++) {
+                    util::matrix_t<int> FCM = m_FCA[k];
+
+                    // padding -1 (matlab uses 0) should have been removed in zigzag method
+                    size_t nSteps = FCM.nrows();
+                    mt_T[k].resize(nSteps, 1);
+                    Eigen::MatrixXd k_b = Eigen::MatrixXd::Zero(nSteps, 1);
+
+                    Eigen::MatrixXd k_a1 = Eigen::MatrixXd::Zero(nSteps, nSteps);
+                    k_a1.diagonal(-1).setConstant(1);
+                    Eigen::MatrixXd k_a2 = Eigen::MatrixXd::Identity(nSteps, nSteps);
+                    Eigen::MatrixXd k_A = mc * (k_a2.array() - k_a1.array());
+
+                    // Extract conduction rates
+                    for (size_t i = 0; i < nSteps; i++) {
+                        util::matrix_t<int> step_IDs = FCM.row(i);
+                        for (size_t j = 0; j < step_IDs.ncols(); j++) {
+                            if (step_IDs(0, j) != -1) {
+                                k_b(i, 0) += E_Q_gain(step_IDs(0, j));
+                            }
+                        }
+                    }
+
+                    k_b(0, 0) += mc * T_salt_cold_in;
+
+                    // Solve energy balance for this pipe
+                    Eigen::MatrixXd E_T_step = k_A.colPivHouseholderQr().solve(k_b);
+
+                    E_T_out_pipe(0, k) = E_T_step(nSteps - 1, 0);
+
+                    for (size_t ii = 0; ii < nSteps; ii++) {
+                        mt_T[k](ii, 0) = E_T_step(ii, 0);
+                    }
                 }
+
+                double T_out = E_T_out_pipe.mean();         //[K]
+                error_T_out = T_out - m_T_htf_hot_des;      //[K]
+
+                // adjust value of m_dot - usually not needed
+                double q_gain_total_new = m_dot * cp_htf * nPipes * (T_out - T_salt_cold_in); //[W]
+                m_dot = q_gain_total_new / (nPipes * cp_htf * (m_T_htf_hot_des - T_salt_cold_in));
             }
 
-            Eigen::MatrixXd A = A_1.array() + (A_2 + A_4_square).array()*E_eye.array();
-
-            Eigen::MatrixXd B = B_1 + B_2 + B_3;
-
-            E_T = A.colPivHouseholderQr().solve(B);
-            E_T.conservativeResize(m_nElems, 1);
-            E_T(m_nElems-1,0) = T_amb;
-
-            // Update convective correlation
-            hbarCorrelation(E_T, T_amb, E_h);
-
-            error_T = 0.0;
-            for (size_t i = 0; i < m_nElems; i++) {
-                error_T = max(error_T, abs(E_T(i,0) - E_Tstar(i,0))/E_T(i,0));
-            }
-        }
-
-        Eigen::MatrixXd E_Q_gain = E_UA.array()*mE_areas.array()*(E_T.array() - E_T_HTF.array());   //[W]
-
-
-        double q_gain_net = E_Q_gain.sum();
-        double m_dot = q_gain_net/(nPipes*cp_htf*(m_T_htf_hot_des - T_salt_cold_in));
-        std::vector<util::matrix_t<double>> mt_T;
-
-        double error_T_out = 100.0;
-
-        double tol_T_out = 0.1;
-        while (fabs(error_T_out) > tol_T_out) {
-
-            double mc = m_dot * cp_htf; //[kg/s * J/kg-K] = [W/K]
-
-            mt_T.resize(m_FCA.size());
-
-            Eigen::MatrixXd E_T_out_pipe = Eigen::MatrixXd::Zero(1, nPipes);
-
+            Eigen::MatrixXd E_T_HTF_calc = Eigen::MatrixXd::Zero(m_nElems, 1);
+            // assign fluid temperatures based on solution
             for (size_t k = 0; k < nPipes; k++) {
                 util::matrix_t<int> FCM = m_FCA[k];
 
                 // padding -1 (matlab uses 0) should have been removed in zigzag method
                 size_t nSteps = FCM.nrows();
-                mt_T[k].resize(nSteps,1);
-                Eigen::MatrixXd k_b = Eigen::MatrixXd::Zero(nSteps, 1);
-
-                Eigen::MatrixXd k_a1 = Eigen::MatrixXd::Zero(nSteps, nSteps);
-                k_a1.diagonal(-1).setConstant(1);
-                Eigen::MatrixXd k_a2 = Eigen::MatrixXd::Identity(nSteps, nSteps);
-                Eigen::MatrixXd k_A = mc * (k_a2.array() - k_a1.array());
-
-                // Extract conduction rates
                 for (size_t i = 0; i < nSteps; i++) {
                     util::matrix_t<int> step_IDs = FCM.row(i);
                     for (size_t j = 0; j < step_IDs.ncols(); j++) {
-                        if (step_IDs(0,j) != -1) {
-                            k_b(i,0) += E_Q_gain(step_IDs(0,j));
-                        }
+                        E_T_HTF_calc(step_IDs(0, j)) = mt_T[k](i, 0);
                     }
                 }
-
-                k_b(0,0) += mc*T_salt_cold_in;
-
-                // Solve energy balance for this pipe
-                Eigen::MatrixXd E_T_step = k_A.colPivHouseholderQr().solve(k_b);
-
-                E_T_out_pipe(0,k) = E_T_step(nSteps-1,0);
-
-                for (size_t ii = 0; ii < nSteps; ii++) {
-                    mt_T[k](ii,0) = E_T_step(ii,0);
-                }
             }
 
-            double T_out = E_T_out_pipe.mean();         //[K]
-            error_T_out = T_out - m_T_htf_hot_des;      //[K]
+            double m_dot_total = m_dot * nPipes;
 
-            // adjust value of m_dot - usually not needed
-            double q_gain_total_new = m_dot*cp_htf*nPipes*(T_out - T_salt_cold_in); //[W]
-            m_dot = q_gain_total_new / (nPipes*cp_htf*(m_T_htf_hot_des-T_salt_cold_in));
-        }
-
-        Eigen::MatrixXd E_T_HTF_calc = Eigen::MatrixXd::Zero(m_nElems, 1);
-        // assign fluid temperatures based on solution
-        for (size_t k = 0; k < nPipes; k++) {
-            util::matrix_t<int> FCM = m_FCA[k];
-
-            // padding -1 (matlab uses 0) should have been removed in zigzag method
-            size_t nSteps = FCM.nrows();
-            for (size_t i = 0; i < nSteps; i++) {
-                util::matrix_t<int> step_IDs = FCM.row(i);
-                for (size_t j = 0; j < step_IDs.ncols(); j++) {
-                    E_T_HTF_calc(step_IDs(0,j)) = mt_T[k](i,0);
-                }
+            // Calculate difference between T_HTF and T_HTF_calc
+            error_T_HTF = 0.0;
+            for (size_t i = 0; i < m_nElems; i++) {
+                error_T_HTF = max(error_T_HTF, abs(E_T_HTF(i, 0) - E_T_HTF_calc(i, 0)));
             }
+
+            E_T_HTF = E_T_HTF_calc;
         }
 
-        double m_dot_total = m_dot * nPipes;
-
+        // energy and fluid balance converged
     }
     else {
         // If receiver was off BEFORE startup deductions
