@@ -48,8 +48,8 @@ public:
     public:
         util::matrix_t<double> vertices;    // (nr, nc) -> (vertices, xyx)
         double e_size;
-        size_t type;
-        bool is_active_surf;
+        size_t type;                // mesh type: 0=triangle, 1=quad, 2=single element
+        bool is_active_surf;        // True: active surface w/ HTF, False: passive surface no HTF
         bool is_flipRoute;
         double eps_sol;             //[-]
         double eps_therm;           //[-]
@@ -95,7 +95,7 @@ private:
 
     // ************************************
     // Calculated stored parameters
-    std::vector<C_rec_surface> mv_rec_surfs;
+    std::vector<C_rec_surface> mv_rec_surfs;    // vector of surface classes for each surface in cavity model
     std::vector<util::matrix_t<int>> m_v_elems;
     util::matrix_t<double> m_nodesGlobal;
 

@@ -66,10 +66,11 @@ C_cavity_receiver::C_cavity_receiver(double hel_stow_deploy /*-*/, double T_htf_
 void C_cavity_receiver::genOctCavity(double height /*m*/, double width /*m*/,
     double liptop /*m*/, double lipbot /*m*/)
 {
+    // Matlab function:
     //function[PANEL1, PANEL2, PANEL3, PANEL4, FLOOR, COVER, TOPLIP, BOTLIP, APERTURE] = genOctCavity(height, width, lipTop, lipBot, varargin) % #codegen
-    //    % creates geometry for a half - octagonal cavity reciever of specified width
-    //    % andheight, with or without upper and lower lips
-
+    
+    // Creates geometry (i.e. defines vertices) for a 4-panel half-octagonal cavity receiver
+    // of specified width, height, and with or without upper and lower lips
     size_t nPanels = 4;
     mv_rec_surfs.resize(nPanels + 5);
 
@@ -116,11 +117,7 @@ void C_cavity_receiver::genOctCavity(double height /*m*/, double width /*m*/,
         }
     }
 
-    //// hardcode top and bottom lip for now
-    //double lipTop = 0.0;
-    //double lipBot = 0.0;
-
-    double theta = CSP::pi / (double)nPanels;
+    double theta = CSP::pi / (double)nPanels;   //[rad]
 
     // matrix_t(nr, nc, val)
     // (x, y, z)
@@ -2197,21 +2194,21 @@ void C_cavity_receiver::init()
     // Set up cavity geometry and view factors
     // ******************************************
 
-    receiverHeight = 12; // Receiver opening height in meters
-    receiverWidth = 14; // Reciever opening width in meters
-    topLipHeight = 1; // Height of top lip in meters
-    botLipHeight = 1; // Height of bottom lip in meters
+    receiverHeight = 12;    //[m] Receiver opening height in meters
+    receiverWidth = 14;     //[m] Reciever opening width in meters
+    topLipHeight = 1;       //[m] Height of top lip in meters
+    botLipHeight = 1;       //[m] Height of bottom lip in meters
 
-    e_act_sol = 0.965; // Absorbtivity in short wave range for active surfaces
-    e_pass_sol = 0.05; // Absorbtivity in short wave range for passive surfaces
-    e_act_therm = 0.85; // Emissivity in long wave range for active surfaces
-    e_pass_therm = 0.25; // Emissivity in long wave range for passive surfaces
+    e_act_sol = 0.965;      //[-] Absorbtivity in short wave range for active surfaces
+    e_pass_sol = 0.05;      //[-] Absorbtivity in short wave range for passive surfaces
+    e_act_therm = 0.85;     //[-] Emissivity in long wave range for active surfaces
+    e_pass_therm = 0.25;    //[-] Emissivity in long wave range for passive surfaces
 
     size_t pipeWindings = 9;    // round(receiverHeight / min(elemSizes))
 
     pipeWindings = 1;
 
-
+    // Create geometry(i.e.defines vertices) for a 4 - panel half - octagonal cavity receiver
     genOctCavity(receiverHeight, receiverWidth, topLipHeight, botLipHeight);
 
     meshGeometry();
