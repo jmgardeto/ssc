@@ -51,7 +51,10 @@ bool sort_pair_ascending(pair<double,double> i, pair<double, double> j)
 }
 
 C_cavity_receiver::C_cavity_receiver(double hel_stow_deploy /*-*/, double T_htf_hot_des /*K*/, double q_dot_rec_des /*MWt*/,
-    double rec_qf_delay /*-*/, double rec_su_delay /*hr*/, int field_fl /*-*/, util::matrix_t<double> field_fl_props)
+    double rec_qf_delay /*-*/, double rec_su_delay /*hr*/, int field_fl /*-*/, util::matrix_t<double> field_fl_props,
+    double rec_height /*m*/, double rec_width /*m*/, double toplip_height /*m*/, double botlip_height /*m*/,
+    double eps_active_sol /*-*/, double eps_passive_sol /*-*/, double eps_active_therm /*-*/, double eps_passive_therm /*-*/,
+    double elemSize )
 {
     m_hel_stow_deploy = hel_stow_deploy;    //[-]
     m_T_htf_hot_des = T_htf_hot_des;        //[K]
@@ -61,10 +64,19 @@ C_cavity_receiver::C_cavity_receiver(double hel_stow_deploy /*-*/, double T_htf_
     m_field_fl = field_fl;                  //[-]
     m_field_fl_props = field_fl_props;      //[-]
 
+    m_receiverHeight = rec_height;      //[m]
+    m_receiverWidth = rec_width;        //[m]
+    m_topLipHeight = toplip_height;     //[m]
+    m_botLipHeight = botlip_height;     //[m]
+    m_e_act_sol = eps_active_sol;       //[-]
+    m_e_pass_sol = eps_passive_sol;     //[-]
+    m_e_act_therm = eps_active_therm;   //[-]
+    m_e_pass_therm = eps_passive_therm; //[-]
+
+    m_elemSize = elemSize;
 }
 
-void C_cavity_receiver::genOctCavity(double height /*m*/, double width /*m*/,
-    double liptop /*m*/, double lipbot /*m*/)
+void C_cavity_receiver::genOctCavity()
 {
     // Matlab function:
     //function[PANEL1, PANEL2, PANEL3, PANEL4, FLOOR, COVER, TOPLIP, BOTLIP, APERTURE] = genOctCavity(height, width, lipTop, lipBot, varargin) % #codegen
@@ -107,12 +119,12 @@ void C_cavity_receiver::genOctCavity(double height /*m*/, double width /*m*/,
         }
         else {
             if (mv_rec_surfs[i].is_active_surf) {
-                mv_rec_surfs[i].eps_sol = e_act_sol;        //[-]
-                mv_rec_surfs[i].eps_therm = e_act_therm;    //[-]
+                mv_rec_surfs[i].eps_sol = m_e_act_sol;        //[-]
+                mv_rec_surfs[i].eps_therm = m_e_act_therm;    //[-]
             }
             else {
-                mv_rec_surfs[i].eps_sol = e_pass_sol;       //[-]
-                mv_rec_surfs[i].eps_therm = e_pass_therm;   //[-]
+                mv_rec_surfs[i].eps_sol = m_e_pass_sol;       //[-]
+                mv_rec_surfs[i].eps_therm = m_e_pass_therm;   //[-]
             }
         }
     }
@@ -125,10 +137,10 @@ void C_cavity_receiver::genOctCavity(double height /*m*/, double width /*m*/,
     mv_rec_surfs[COVER].vertices.resize_fill(nPanels + 1, 3, 0.0);
 
     for (size_t i = 0; i < nPanels+1; i++) {
-        mv_rec_surfs[FLOOR].vertices(i, 0) = mv_rec_surfs[COVER].vertices(i, 0) = width * cos(i * theta)/2.0;
-        mv_rec_surfs[FLOOR].vertices(i, 1) = mv_rec_surfs[COVER].vertices(i, 1) = width * sin(i * theta)/2.0;
-        mv_rec_surfs[FLOOR].vertices(i, 2) = -height / 2.0;
-        mv_rec_surfs[COVER].vertices(i, 2) = height / 2.0;
+        mv_rec_surfs[FLOOR].vertices(i, 0) = mv_rec_surfs[COVER].vertices(i, 0) = m_receiverWidth * cos(i * theta)/2.0;
+        mv_rec_surfs[FLOOR].vertices(i, 1) = mv_rec_surfs[COVER].vertices(i, 1) = m_receiverWidth * sin(i * theta)/2.0;
+        mv_rec_surfs[FLOOR].vertices(i, 2) = -m_receiverHeight / 2.0;
+        mv_rec_surfs[COVER].vertices(i, 2) = m_receiverHeight / 2.0;
     }
 
     util::matrix_t<double> temp_total(4, 3, std::numeric_limits<double>::quiet_NaN());
@@ -169,7 +181,7 @@ void C_cavity_receiver::genOctCavity(double height /*m*/, double width /*m*/,
     mv_rec_surfs[TOPLIP].vertices.resize_fill(4, 3, std::numeric_limits<double>::quiet_NaN());
     mv_rec_surfs[BOTLIP].vertices.resize_fill(4, 3, std::numeric_limits<double>::quiet_NaN());
 
-    if (liptop <= 0.0) {
+    if (m_topLipHeight <= 0.0) {
         temp_p1 = mv_rec_surfs[COVER].vertices.row(0);
         for (size_t i = 0; i < temp_p1.length(); i++) {
             mv_rec_surfs[APERTURE].vertices(0, i) = temp_p1(0, i);
@@ -188,7 +200,7 @@ void C_cavity_receiver::genOctCavity(double height /*m*/, double width /*m*/,
         for (size_t i = 0; i < 2; i++) {
             temp_a(i, 0) = mv_rec_surfs[TOPLIP].vertices(i, 0);
             temp_a(i, 1) = mv_rec_surfs[TOPLIP].vertices(i, 1);
-            temp_a(i, 2) = mv_rec_surfs[TOPLIP].vertices(i, 2) - liptop;
+            temp_a(i, 2) = mv_rec_surfs[TOPLIP].vertices(i, 2) - m_topLipHeight;
         }
         util::matrix_t<double> temp_b;
         flipup(temp_a, temp_b);
@@ -200,7 +212,7 @@ void C_cavity_receiver::genOctCavity(double height /*m*/, double width /*m*/,
         }
     }
 
-    if (lipbot <= 0.0) {
+    if (m_botLipHeight <= 0.0) {
         temp_p1 = mv_rec_surfs[FLOOR].vertices.row(nPanels);
         for (size_t i = 0; i < temp_p1.length(); i++) {
             mv_rec_surfs[APERTURE].vertices(2, i) = temp_p1(0, i);
@@ -219,7 +231,7 @@ void C_cavity_receiver::genOctCavity(double height /*m*/, double width /*m*/,
         for (size_t i = 0; i < 2; i++) {
             temp_a(i,0) = mv_rec_surfs[BOTLIP].vertices(i,0);
             temp_a(i,1) = mv_rec_surfs[BOTLIP].vertices(i,1);
-            temp_a(i,2) = mv_rec_surfs[BOTLIP].vertices(i,2) + lipbot;
+            temp_a(i,2) = mv_rec_surfs[BOTLIP].vertices(i,2) + m_botLipHeight;
         }
         util::matrix_t<double> temp_b;
         flipup(temp_a, temp_b);
@@ -242,6 +254,12 @@ void C_cavity_receiver::meshGeometry()
         elemsFloor, elemsCover, elemsTopLip, elemsBotLip, elemsApert] = meshGeometry(elemSizes, meshTypes, ...
             PANEL1, PANEL2, PANEL3, PANEL4, FLOOR, COVER, TOPLIP, BOTLIP, APERTURE);*/
 
+    // Meshes each surface, depending on each surface "type"
+    // Also uses the same constant 'm_elemSize' for each surface
+    // Defines member data:
+    // -- m_v_elems: each vector index is a surface; each row lists the nodes that define a mesh element
+    // -- m_nodesGlobal: each row lists x,y,z coordinates of each node
+
     vector<util::matrix_t<double>> v_nodes;
 
     int lastNodeID = 0;
@@ -249,7 +267,6 @@ void C_cavity_receiver::meshGeometry()
     for (size_t i = 0; i < mv_rec_surfs.size(); i++)
     {
         util::matrix_t<double> surf = mv_rec_surfs[i].vertices;
-        double elemSize = mv_rec_surfs[i].e_size;
         size_t type = mv_rec_surfs[i].type;
 
         util::matrix_t<double> nodes;
@@ -264,11 +281,11 @@ void C_cavity_receiver::meshGeometry()
             if (type == 0) {
                 // Mesh with triangles
                 throw(C_csp_exception("Triangle meshes not currently supported. Need to add qhull project"));
-                meshPolygon(surf, elemSize);
+                meshPolygon(surf, m_elemSize);
             }
             else if (type == 1) {
                 // Mesh with quads
-                meshMapped(surf, elemSize, nodes, elems);
+                meshMapped(surf, m_elemSize, nodes, elems);
                 v_nodes.push_back(nodes);
             }
             else {
@@ -319,15 +336,18 @@ void C_cavity_receiver::makeGlobalElems()
     util::matrix_t<int> temp;
     for (size_t i = 0; i < n_surfs; i++) {
         if (std::isfinite(mv_rec_surfs[i].vertices(0,0))) {
-            count(i,0) = m_v_elems[i].nrows();
-            type(i,0) = m_v_elems[i].ncols();
-            // determine the number of elements in the ith set, and their kind
+
+            count(i,0) = m_v_elems[i].nrows();  //[-] number of elements for surface
+            type(i,0) = m_v_elems[i].ncols();   //[-] number of nodes defining the element
+
+            // adjust to global index
             temp.resize(count(i,0),1);
             for (size_t j = 0; j < count(i, 0); j++) {
                 temp(j,0) = m_nElems + j;
             }
             m_surfIDs.push_back(temp);
-            m_nElems += count(i,0);
+
+            m_nElems += count(i,0);     //[-] adjust global element count
         }
         else {
             m_surfIDs.push_back(int_neg);
@@ -461,7 +481,6 @@ void C_cavity_receiver::surfValuesToElems()
     }
 
     // Combine local vectors into global vector
-    m_globalValues.resize_fill(lastElemID, 1, false);
     m_epsilonSol.resize_fill(lastElemID, 1, std::numeric_limits<double>::quiet_NaN());
     m_epsilonTherm.resize_fill(lastElemID, 1, std::numeric_limits<double>::quiet_NaN());
     lastElemID = 0;
@@ -471,7 +490,6 @@ void C_cavity_receiver::surfValuesToElems()
         if (std::isfinite(mv_rec_surfs[i_surf].vertices(0, 0))) {
             int nElems = is_active_value[i_surf].nrows();
             for (size_t i = 0; i < nElems; i++) {
-                m_globalValues(i+lastElemID,0) = is_active_value[i_surf](i,0);
                 m_epsilonSol(i+lastElemID,0) = mv_rec_surfs[i_surf].eps_sol;
                 m_epsilonTherm(i + lastElemID, 0) = mv_rec_surfs[i_surf].eps_therm;
             }
@@ -483,7 +501,7 @@ void C_cavity_receiver::surfValuesToElems()
 
 void C_cavity_receiver::zigzagRouting(size_t n_steps)
 {
-    double tol = 0.05;      // fraction of receiver height
+    double tol = 0.05;      //[-] fraction of receiver height
     int maxDim = m_centroids.nrows();
 
     int n_surf_all = mv_rec_surfs.size();
@@ -494,6 +512,7 @@ void C_cavity_receiver::zigzagRouting(size_t n_steps)
         }
     }
 
+    // resize Fluid Connectivity Array
     m_FCA.resize(n_active);
 
     size_t maxRow = 0;
@@ -631,13 +650,10 @@ void C_cavity_receiver::zigzagRouting(size_t n_steps)
                         if (elemGroup.size() > maxCol) {
                             maxCol = elemGroup.size();
                         }
-
                         
                         for (size_t j = 0; j < elemGroup.size(); j++) {
                             FCM(count,j) = elemGroup[j];
                         }
-
-                        double abce = 1.23;
                     }
                 }
             }
@@ -683,19 +699,15 @@ void C_cavity_receiver::zigzagRouting(size_t n_steps)
             }
         }
 
-
-
         m_FCA[i_surf].resize_preserve(i_row_nonzero + 1, j_col_nonzero + 1, -1);
     }
-
-    
 
     return;
 }
 
 void C_cavity_receiver::VFMatrix()
 {
-    int n_surfs = m_v_elems.size();
+    size_t n_surfs = m_v_elems.size();
     int nElems = 0;
     for (size_t i = 0; i < n_surfs; i++) {
         nElems += m_v_elems[i].nrows();
@@ -707,7 +719,6 @@ void C_cavity_receiver::VFMatrix()
 
     util::matrix_t<double> ELEM_I;
     util::matrix_t<double> ELEM_J;
-
 
     for (size_t g_surf = 0; g_surf < n_surfs - 1; g_surf++) {   // loop though surfaces
         if (std::isfinite(mv_rec_surfs[g_surf].vertices(0, 0))) {   // check for empty
@@ -826,10 +837,10 @@ void C_cavity_receiver::hbarCorrelation(const Eigen::MatrixXd& T, double T_amb /
                         + 2.27985665430374E-8*T_amb - 2.0313337298359E-6;
     double k = -1.24607229972985E-16*pow(T_amb,4) + 5.01096786429384E-12*pow(T_amb,3) - 2.940474355754410E-8*pow(T_amb,2)
                         + 9.05978900277077E-5*T_amb + 9.82003734668099E-4;
-    double Gr = (CSP::grav * beta * (T_avg - T_amb) * pow(receiverHeight,3)) / pow(nu,2);
+    double Gr = (CSP::grav * beta * (T_avg - T_amb) * pow(m_receiverHeight,3)) / pow(nu,2);
     double Nuss = 0.088*pow(Gr,(1./3.)) * pow((T_avg / T_amb),0.18);
 
-    h.setConstant(mE_areas.rows() - 1, 1, (Nuss*k) / receiverHeight * 1.0);
+    h.setConstant(mE_areas.rows() - 1, 1, (Nuss*k) / m_receiverHeight * 1.0);
 }
 
 void C_cavity_receiver::interpSolarFlux(const util::matrix_t<double>& fluxDist)
@@ -1893,8 +1904,8 @@ void C_cavity_receiver::map(const util::matrix_t<double>& poly2D, double elemSiz
     }
 
     // find reasonable # of elements per edge for mapping
-    int elemsM = std::max(1, (int) std::round(0.5/elemSize*(lengthAB + lengthCD)));
-    int elemsN = std::max(1, (int) std::round(0.5/elemSize*(lengthBC + lengthDA)));
+    size_t elemsM = std::max(1, (int) std::round(0.5/elemSize*(lengthAB + lengthCD)));
+    size_t elemsN = std::max(1, (int) std::round(0.5/elemSize*(lengthBC + lengthDA)));
 
     // initialize nodeand element arrays
     nodes.resize_fill((elemsM+1)*(elemsN+1), 2, 0.0);
@@ -2194,34 +2205,29 @@ void C_cavity_receiver::init()
     // Set up cavity geometry and view factors
     // ******************************************
 
-    receiverHeight = 12;    //[m] Receiver opening height in meters
-    receiverWidth = 14;     //[m] Reciever opening width in meters
-    topLipHeight = 1;       //[m] Height of top lip in meters
-    botLipHeight = 1;       //[m] Height of bottom lip in meters
-
-    e_act_sol = 0.965;      //[-] Absorbtivity in short wave range for active surfaces
-    e_pass_sol = 0.05;      //[-] Absorbtivity in short wave range for passive surfaces
-    e_act_therm = 0.85;     //[-] Emissivity in long wave range for active surfaces
-    e_pass_therm = 0.25;    //[-] Emissivity in long wave range for passive surfaces
-
-    size_t pipeWindings = 9;    // round(receiverHeight / min(elemSizes))
-
-    pipeWindings = 1;
+    size_t pipeWindings = 5;    // round(receiverHeight / min(elemSizes))   // 1
 
     // Create geometry(i.e.defines vertices) for a 4 - panel half - octagonal cavity receiver
-    genOctCavity(receiverHeight, receiverWidth, topLipHeight, botLipHeight);
+    genOctCavity();
 
+    // Meshes each surface
     meshGeometry();
 
+    // Make global elements and calculate element centroids and areas
     makeGlobalElems();
 
+    // Assign global element solar and thermal emissivity
     surfValuesToElems();
 
+    // Define fluid connectivity array
     zigzagRouting(pipeWindings);
 
+    // Calculate view factors
     VFMatrix();
 
-    FHatMatrix(m_epsilonSol, m_FHatS, m_rhoSol, mE_FHatS, mE_rhoSol);
+    // Calculate FHat matrices
+    util::matrix_t<double> rhoSol;
+    FHatMatrix(m_epsilonSol, m_FHatS, rhoSol, mE_FHatS, mE_rhoSol);
 
     util::matrix_t<double> rhoTherm;
     FHatMatrix(m_epsilonTherm, m_FHatT, rhoTherm, mE_FHatT, mE_rhoTherm);
@@ -2432,13 +2438,9 @@ void C_cavity_receiver::call(const C_csp_weatherreader::S_outputs& weather,
             0.00,
             0.00 };
 
-        for (size_t i = 0; i < solarFlux.size(); i++) {
-            solarFlux[i] *= flux_scale;
-        }
-
         Eigen::MatrixXd EsolarFlux(solarFlux.size(), 1);
         for (size_t i = 0; i < solarFlux.size(); i++) {
-            EsolarFlux(i, 0) = solarFlux[i];
+            EsolarFlux(i, 0) = solarFlux[i]*flux_scale;
         }
 
         // Assign conductance between HTF and each element

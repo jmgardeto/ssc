@@ -1594,7 +1594,22 @@ public:
             double rec_su_delay = as_double("rec_su_delay");        //[hr]
             double rec_qf_delay = as_double("rec_qf_delay");        //[-]
 
-            C_cavity_receiver c_cav_rec(hel_stow_deploy, T_htf_hot_des, q_rec_des, rec_qf_delay, rec_su_delay, as_integer("rec_htf"), as_matrix("field_fl_props"));
+            double receiverHeight = 12;    //[m] Receiver opening height in meters
+            double receiverWidth = 14;     //[m] Reciever opening width in meters
+            double topLipHeight = 1;       //[m] Height of top lip in meters
+            double botLipHeight = 1;       //[m] Height of bottom lip in meters
+            
+            double e_act_sol = 0.965;      //[-] Absorbtivity in short wave range for active surfaces
+            double e_pass_sol = 0.05;      //[-] Absorbtivity in short wave range for passive surfaces
+            double e_act_therm = 0.85;     //[-] Emissivity in long wave range for active surfaces
+            double e_pass_therm = 0.25;    //[-] Emissivity in long wave range for passive surfaces
+
+            double elemSize = 2.3;          //
+
+            C_cavity_receiver c_cav_rec(hel_stow_deploy, T_htf_hot_des, q_rec_des,
+                rec_qf_delay, rec_su_delay, as_integer("rec_htf"), as_matrix("field_fl_props"),
+                receiverHeight, receiverWidth, topLipHeight, botLipHeight,
+                e_act_sol, e_pass_sol, e_act_therm, e_pass_therm, elemSize);
 
             c_cav_rec.init();
 

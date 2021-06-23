@@ -46,18 +46,13 @@ public:
     class C_rec_surface
     {
     public:
-        util::matrix_t<double> vertices;    // (nr, nc) -> (vertices, xyx)
-        double e_size;
+        util::matrix_t<double> vertices;    // (nr, nc) -> (vertex index, dimension (i.e. xyx))
         size_t type;                // mesh type: 0=triangle, 1=quad, 2=single element
         bool is_active_surf;        // True: active surface w/ HTF, False: passive surface no HTF
         bool is_flipRoute;
         double eps_sol;             //[-]
         double eps_therm;           //[-]
 
-        C_rec_surface()
-        {
-            e_size = 2.5;
-        }
     };
 
     enum surf_order
@@ -83,49 +78,47 @@ private:
 
     double m_hel_stow_deploy;			//[-]
 
-    double receiverHeight; //[m] Receiver opening height in meters
-    double receiverWidth; //[m] Reciever opening width in meters
-    double topLipHeight;  //[m] Height of top lip in meters
-    double botLipHeight;  //[m] Height of bottom lip in meters
-    double e_act_sol;     //[-] Absorbtivity in short wave range for active surfaces
-    double e_pass_sol;    //[-] Absorbtivity in short wave range for passive surfaces
-    double e_act_therm;   //[-] Emissivity in long wave range for active surfaces
-    double e_pass_therm;  //[-] Emissivity in long wave range for passive surfaces
+    double m_receiverHeight; //[m] Receiver opening height in meters
+    double m_receiverWidth; //[m] Reciever opening width in meters
+    double m_topLipHeight;  //[m] Height of top lip in meters
+    double m_botLipHeight;  //[m] Height of bottom lip in meters
+    double m_e_act_sol;     //[-] Absorbtivity in short wave range for active surfaces
+    double m_e_pass_sol;    //[-] Absorbtivity in short wave range for passive surfaces
+    double m_e_act_therm;   //[-] Emissivity in long wave range for active surfaces
+    double m_e_pass_therm;  //[-] Emissivity in long wave range for passive surfaces
+
+    double m_elemSize;      //
     // ************************************
 
     // ************************************
     // Calculated stored parameters
     std::vector<C_rec_surface> mv_rec_surfs;    // vector of surface classes for each surface in cavity model
-    std::vector<util::matrix_t<int>> m_v_elems;
-    util::matrix_t<double> m_nodesGlobal;
+    std::vector<util::matrix_t<int>> m_v_elems; // each vector index is a surface; each row lists the nodes that define a mesh element
+    util::matrix_t<double> m_nodesGlobal;       // each row lists x,y,z coordinates of each node
 
-    util::matrix_t<int> m_elements;
-    std::vector<util::matrix_t<int>> m_surfIDs;
-    util::matrix_t<double> m_areas;
-    Eigen::MatrixXd mE_areas;
-    util::matrix_t<double> m_centroids;
-    int m_nElems;
+    util::matrix_t<int> m_elements;             // global element tracker; each row, indexed by m_surfIDs, lists the nodes that define a mesh element
+    std::vector<util::matrix_t<int>> m_surfIDs; // global element count for each surface
+    util::matrix_t<double> m_areas;             // global element areas, each row indexed by m_surfIDs
+    Eigen::MatrixXd mE_areas;                   // global element areas, each row indexed by m_surfIDs
+    util::matrix_t<double> m_centroids;         // global element centroids, each row indexed by m_surfIDs
+    size_t m_nElems;                            // global element centroids, each row indexed by m_surfIDs
 
-    util::matrix_t<bool> m_globalValues;
-    util::matrix_t<double> m_epsilonSol;
-    util::matrix_t<double> m_epsilonTherm;
+    util::matrix_t<double> m_epsilonSol;        // global element solar emissivity 
+    Eigen::MatrixXd mE_epsilonSol;              // global element solar emissivity
+    util::matrix_t<double> m_epsilonTherm;      // global element thermal emissivity
+    Eigen::MatrixXd mE_epsilonTherm;            // global element thermal emissivity
 
-    Eigen::MatrixXd mE_epsilonSol;
-    Eigen::MatrixXd mE_epsilonTherm;
+    std::vector<util::matrix_t<int>> m_FCA;     // fluid connectivity array
 
-    std::vector<util::matrix_t<int>> m_FCA;
+    util::matrix_t<double> m_F;                 // view factors
 
-    util::matrix_t<double> m_F;
+    util::matrix_t<double> m_FHatS;             // FHat solar
+    Eigen::MatrixXd mE_FHatS;                   // FHat solar
+    util::matrix_t<double> m_FHatT;             // FHat thermal
+    Eigen::MatrixXd mE_FHatT;                   // FHat thermal
 
-    util::matrix_t<double> m_FHatS;
-    Eigen::MatrixXd mE_FHatS;
-    util::matrix_t<double> m_FHatT;
-    Eigen::MatrixXd mE_FHatT;
-
-    util::matrix_t<double> m_rhoSol;
-    Eigen::MatrixXd mE_rhoSol;
-    Eigen::MatrixXd mE_rhoTherm;
-        
+    Eigen::MatrixXd mE_rhoSol;                  // global element solar reflectivity
+    Eigen::MatrixXd mE_rhoTherm;                // global element thermal reflectivity
 
     // ************************************
     // Call variables
@@ -145,7 +138,10 @@ public:
 
 	// Methods
 	C_cavity_receiver(double hel_stow_deploy /*-*/, double T_htf_hot_des /*K*/, double q_dot_rec_des /*MWt*/,
-        double rec_qf_delay /*-*/, double rec_su_delay /*hr*/, int field_fl /*-*/, util::matrix_t<double> field_fl_props );
+        double rec_qf_delay /*-*/, double rec_su_delay /*hr*/, int field_fl /*-*/, util::matrix_t<double> field_fl_props,
+        double rec_height /*m*/, double rec_width /*m*/, double toplip_height /*m*/, double botlip_height /*m*/,
+        double eps_active_sol /*-*/, double eps_passive_sol /*-*/, double eps_active_therm /*-*/, double eps_passive_therm /*-*/,
+        double elemSize );
 
 	~C_cavity_receiver() {};
 
@@ -168,8 +164,7 @@ public:
 
 	virtual double area_proj();
 
-    void genOctCavity(double height /*m*/, double width /*m*/,
-        double liptop /*m*/, double lipbot /*m*/);
+    void genOctCavity();
 
     void meshGeometry();
 
