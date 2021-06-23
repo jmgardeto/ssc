@@ -86,15 +86,15 @@ void C_cavity_receiver::genOctCavity()
     size_t nPanels = 4;
     mv_rec_surfs.resize(nPanels + 5);
 
-    mv_rec_surfs[PANEL1].type = 1;
-    mv_rec_surfs[PANEL2].type = 1;
-    mv_rec_surfs[PANEL3].type = 1;
-    mv_rec_surfs[PANEL4].type = 1;
-    mv_rec_surfs[FLOOR].type = 2;
-    mv_rec_surfs[COVER].type = 2;
-    mv_rec_surfs[TOPLIP].type = 1;
-    mv_rec_surfs[BOTLIP].type = 1;
-    mv_rec_surfs[APERTURE].type = 2;
+    mv_rec_surfs[PANEL1].type = 0; // 1;
+    mv_rec_surfs[PANEL2].type = 0; // 1;
+    mv_rec_surfs[PANEL3].type = 0; // 1;
+    mv_rec_surfs[PANEL4].type = 0; // 1;
+    mv_rec_surfs[FLOOR].type = 3; // 2;
+    mv_rec_surfs[COVER].type = 3; // 2;
+    mv_rec_surfs[TOPLIP].type = 0; // 1;
+    mv_rec_surfs[BOTLIP].type = 0; // 1;
+    mv_rec_surfs[APERTURE].type = 3; // 2;
 
     mv_rec_surfs[PANEL1].is_active_surf = true;
     mv_rec_surfs[PANEL2].is_active_surf = true;
@@ -279,14 +279,18 @@ void C_cavity_receiver::meshGeometry()
         }
         else {
             if (type == 0) {
-                // Mesh with triangles
-                throw(C_csp_exception("Triangle meshes not currently supported. Need to add qhull project"));
-                meshPolygon(surf, m_elemSize);
-            }
-            else if (type == 1) {
                 // Mesh with quads
                 meshMapped(surf, m_elemSize, nodes, elems);
                 v_nodes.push_back(nodes);
+            }
+            else if (type == 1) {
+                // Mesh with triangles: meshHalfNgon method
+                throw(C_csp_exception("Triangle mesh method meshHalfNgon not currently supported"));
+            }
+            else if (type == 2) {
+                // Mesh with triangles: meshPolygon method
+                throw(C_csp_exception("Triangle mesh method meshPolygon not currently supported. Need to add qhull project"));
+                meshPolygon(surf, m_elemSize);
             }
             else {
                 // Mesh as a single element
@@ -2445,11 +2449,11 @@ void C_cavity_receiver::call(const C_csp_weatherreader::S_outputs& weather,
 
         // Assign conductance between HTF and each element
         double UA_elemental = 4000;     //[W/K]
-        Eigen::MatrixXd E_UA(m_nElems, 1);
-        E_UA.setConstant(std::numeric_limits<double>::quiet_NaN());
+        Eigen::MatrixXd E_U(m_nElems, 1);
+        E_U.setConstant(std::numeric_limits<double>::quiet_NaN());
         for (size_t i_surf = 0; i_surf < mv_rec_surfs.size(); i_surf++) {
             for (size_t i = 0; i < m_v_elems[i_surf].nrows(); i++) {
-                E_UA(m_surfIDs[i_surf](i,0),0) = UA_elemental*(double)mv_rec_surfs[i_surf].is_active_surf;
+                E_U(m_surfIDs[i_surf](i,0),0) = UA_elemental*(double)mv_rec_surfs[i_surf].is_active_surf/mE_areas(m_surfIDs[i_surf](i,0),0);
             }
         }
 
@@ -2561,14 +2565,14 @@ void C_cavity_receiver::call(const C_csp_weatherreader::S_outputs& weather,
                 for (size_t i = 0; i < m_nElems - 1; i++) {
                     for (size_t j = 0; j < m_nElems - 1; j++) {
                         A_1(i, j) = -mE_epsilonTherm(j, 0) * mE_FHatT(i, j) * (E_Tstar_2(i, 0) + E_Tstar_trans2(0, j)) * (E_Tstar(i, 0) + E_Tstar_trans(0, j));
-                        A_2(i, j) = (E_UA(i, 0) + E_h(i, 0)) / (mE_epsilonTherm(i, 0) * CSP::sigma);
+                        A_2(i, j) = (E_U(i, 0) + E_h(i, 0)) / (mE_epsilonTherm(i, 0) * CSP::sigma);
                     }
                     for (size_t j = 0; j < m_nElems; j++) {
                         A_3(i, j) = (E_Tstar_2(i, 0) + E_Tstar_trans2(0, j)) * (E_Tstar(i, 0) + E_Tstar_trans(0, j)) * mE_FHatT(i, j);
                     }
                     B_1(i, 0) = (EqIn(i, 0) + EqSolOut(i, 0)) / (mE_epsilonTherm(i, 0) * mE_areas(i, 0) * CSP::sigma);
                     B_2(i, 0) = mE_epsilonTherm(m_nElems - 1, 0) * mE_FHatT(i, m_nElems - 1) * T_amb * (E_Tstar_2(i, 0) + pow(T_amb, 2)) * (E_Tstar(i, 0) + T_amb);
-                    B_3(i, 0) = (E_h(i, 0) * T_amb + E_UA(i, 0) * E_T_HTF(i, 0)) / (mE_epsilonTherm(i, 0) * CSP::sigma);
+                    B_3(i, 0) = (E_h(i, 0) * T_amb + E_U(i, 0) * E_T_HTF(i, 0)) / (mE_epsilonTherm(i, 0) * CSP::sigma);
                 }
 
                 Eigen::MatrixXd A_4 = A_3 * mE_epsilonTherm;
@@ -2596,7 +2600,7 @@ void C_cavity_receiver::call(const C_csp_weatherreader::S_outputs& weather,
                 }
             }
 
-            Eigen::MatrixXd E_Q_gain = E_UA.array() * mE_areas.array() * (E_T.array() - E_T_HTF.array());   //[W]
+            Eigen::MatrixXd E_Q_gain = E_U.array() * mE_areas.array() * (E_T.array() - E_T_HTF.array());   //[W]
 
 
             double q_gain_net = E_Q_gain.sum();
