@@ -1611,17 +1611,6 @@ public:
                 receiverHeight, receiverWidth, topLipHeight, botLipHeight,
                 e_act_sol, e_pass_sol, e_act_therm, e_pass_therm, elemSize));
 
-            /*
-            c_cav_rec->init();
-
-            C_csp_weatherreader::S_outputs weather;
-            C_csp_solver_htf_1state htf_state_in;
-            C_pt_receiver::S_inputs inputs;
-            C_csp_solver_sim_info sim_info;
-
-            c_cav_rec->call(weather, htf_state_in, inputs, sim_info);
-            */
-
             receiver = std::move(c_cav_rec);
         }        
         else if (!as_boolean("is_rec_model_trans") && !as_boolean("is_rec_startup_trans")) {
@@ -1740,6 +1729,20 @@ public:
 				receiver->m_clearsky_data.at(i) = (double)csky[i];
 		}
 
+        bool is_test_cavity = false;
+        // Test cavity. Downstream CSP Solver init() function will fail is this block of code runs.
+        // Also need to set 'debugthis' to true in csp_solver_cavity_receiver
+        if (rec_config_code == 1 && is_test_cavity) {
+            
+            receiver->init();
+
+            C_csp_weatherreader::S_outputs weather;
+            C_csp_solver_htf_1state htf_state_in;
+            C_pt_receiver::S_inputs inputs;
+            C_csp_solver_sim_info sim_info;
+
+            receiver->call(weather, htf_state_in, inputs, sim_info);
+        }
 
         // Test mspt_receiver initialization
         //receiver.init();

@@ -2316,6 +2316,9 @@ void C_cavity_receiver::call(const C_csp_weatherreader::S_outputs& weather,
     double I_bn = weather.m_beam;           //[W/m2]
 
 
+    //[-] Guess design field efficiency
+    // Used to scale hard-coded flux map
+    double field_eff_des = 0.6;     
 
     bool debugthis = false;
     if (debugthis) {
@@ -2326,6 +2329,7 @@ void C_cavity_receiver::call(const C_csp_weatherreader::S_outputs& weather,
         T_salt_cold_in = 563.15;
         m_T_htf_hot_des = 848.15;
         T_amb = 20 + 273.15;        //[K] Temperature of surroundings
+        field_eff = field_eff_des;  //[-] set efficiency to design to scale flux map same as Matlab code
     }
 
 
@@ -2383,7 +2387,6 @@ void C_cavity_receiver::call(const C_csp_weatherreader::S_outputs& weather,
 
         //util::matrix_t<double> solarFlux(m_nElems, 1, std::numeric_limits<double>::quiet_NaN());
 
-        double field_eff_des = 0.6;     //[-] Guess design field efficiency
         double flux_scale = 360000.0 / m_dni_des * I_bn / field_eff_des * field_eff;       //[W/m2]
         vector<double> solarFlux = vector<double>{ 0.60,
             0.60,
