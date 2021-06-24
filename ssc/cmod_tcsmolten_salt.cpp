@@ -57,6 +57,7 @@ static var_info _cm_vtab_tcsmolten_salt[] = {
     { SSC_INPUT,     SSC_NUMBER, "field_model_type",                   "0=design field and tower/receiver geometry, 1=design field, 2=user specified field, 3=user performance maps vs solar position",           "",             "",                                  "Heliostat Field",                          "*",                                                                "",              ""},
     { SSC_INPUT,     SSC_NUMBER, "gross_net_conversion_factor",        "Estimated gross to net conversion factor",                                                                                                "",             "",                                  "System Design",                            "*",                                                                "",              ""},
 
+    { SSC_INPUT,     SSC_NUMBER, "receiver_config_code",               "0: external (default), 1; cavity",                                                                                                        "",             "",                                  "Heliostat Field",                          "?=0",                                                              "",              ""},
     { SSC_INPUT,     SSC_NUMBER, "helio_width",                        "Heliostat width",                                                                                                                         "m",            "",                                  "Heliostat Field",                          "*",                                                                "",              ""},
     { SSC_INPUT,     SSC_NUMBER, "helio_height",                       "Heliostat height",                                                                                                                        "m",            "",                                  "Heliostat Field",                          "*",                                                                "",              ""},
     { SSC_INPUT,     SSC_NUMBER, "helio_optical_error_mrad",           "Heliostat optical error",                                                                                                                 "mrad",         "",                                  "Heliostat Field",                          "*",                                                                "",              ""},
@@ -1586,44 +1587,44 @@ public:
             break;
         }
 
-        bool is_cavity = true;
-        if (is_cavity) {
-            double hel_stow_deploy = as_double("hel_stow_deploy");          //[-]
-            double T_htf_hot_des = as_double("T_htf_hot_des") + 273.15;     //[K] convert from C
-            double q_rec_des = as_double("P_ref") / as_double("design_eff") * as_double("solarm");  //[MWt]
-            double rec_su_delay = as_double("rec_su_delay");        //[hr]
-            double rec_qf_delay = as_double("rec_qf_delay");        //[-]
+        std::unique_ptr<C_pt_receiver> receiver;
 
-            double receiverHeight = 12;    //[m] Receiver opening height in meters
-            double receiverWidth = 14;     //[m] Reciever opening width in meters
-            double topLipHeight = 1;       //[m] Height of top lip in meters
-            double botLipHeight = 1;       //[m] Height of bottom lip in meters
+        int rec_config_code = as_integer("receiver_config_code");
+        if (rec_config_code == 1) {
+
+            double hel_stow_deploy = as_double("hel_stow_deploy");          //[deg]
+
+            double receiverHeight = 12;     //[m] Receiver opening height in meters
+            double receiverWidth = 14;      //[m] Reciever opening width in meters
+            double topLipHeight = 1;        //[m] Height of top lip in meters
+            double botLipHeight = 1;        //[m] Height of bottom lip in meters
             
-            double e_act_sol = 0.965;      //[-] Absorbtivity in short wave range for active surfaces
-            double e_pass_sol = 0.05;      //[-] Absorbtivity in short wave range for passive surfaces
-            double e_act_therm = 0.85;     //[-] Emissivity in long wave range for active surfaces
-            double e_pass_therm = 0.25;    //[-] Emissivity in long wave range for passive surfaces
+            double e_act_sol = 0.965;       //[-] Absorbtivity in short wave range for active surfaces
+            double e_pass_sol = 0.05;       //[-] Absorbtivity in short wave range for passive surfaces
+            double e_act_therm = 0.85;      //[-] Emissivity in long wave range for active surfaces
+            double e_pass_therm = 0.25;     //[-] Emissivity in long wave range for passive surfaces
 
-            double elemSize = 2.3;          //
+            double elemSize = 2.3;          //[-]
 
-            C_cavity_receiver c_cav_rec(hel_stow_deploy, T_htf_hot_des, q_rec_des,
-                rec_qf_delay, rec_su_delay, as_integer("rec_htf"), as_matrix("field_fl_props"),
+            std::unique_ptr<C_cavity_receiver> c_cav_rec = std::unique_ptr<C_cavity_receiver>(new C_cavity_receiver(as_double("dni_des"), hel_stow_deploy,
+                as_integer("rec_htf"), as_matrix("field_fl_props"),
                 receiverHeight, receiverWidth, topLipHeight, botLipHeight,
-                e_act_sol, e_pass_sol, e_act_therm, e_pass_therm, elemSize);
+                e_act_sol, e_pass_sol, e_act_therm, e_pass_therm, elemSize));
 
-            c_cav_rec.init();
+            /*
+            c_cav_rec->init();
 
             C_csp_weatherreader::S_outputs weather;
             C_csp_solver_htf_1state htf_state_in;
             C_pt_receiver::S_inputs inputs;
             C_csp_solver_sim_info sim_info;
 
-            c_cav_rec.call(weather, htf_state_in, inputs, sim_info);
-        }
+            c_cav_rec->call(weather, htf_state_in, inputs, sim_info);
+            */
 
-        std::unique_ptr<C_pt_receiver> receiver;
-
-        if (!as_boolean("is_rec_model_trans") && !as_boolean("is_rec_startup_trans")) {
+            receiver = std::move(c_cav_rec);
+        }        
+        else if (!as_boolean("is_rec_model_trans") && !as_boolean("is_rec_startup_trans")) {
             //std::unique_ptr<C_mspt_receiver_222> ss_receiver = std::make_unique<C_mspt_receiver_222>();   // new to C++14
             std::unique_ptr<C_mspt_receiver_222> ss_receiver = std::unique_ptr<C_mspt_receiver_222>(new C_mspt_receiver_222());   // steady-state receiver
 
@@ -1739,8 +1740,6 @@ public:
 				receiver->m_clearsky_data.at(i) = (double)csky[i];
 		}
 
-
-        // Could add optional ISCC stuff...
 
         // Test mspt_receiver initialization
         //receiver.init();

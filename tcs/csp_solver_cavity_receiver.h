@@ -76,7 +76,8 @@ private:
     int m_field_fl;
     util::matrix_t<double> m_field_fl_props;
 
-    double m_hel_stow_deploy;			//[-]
+    double m_dni_des;               //[W/m2]
+    double m_hel_stow_deploy;		//[deg]
 
     double m_receiverHeight; //[m] Receiver opening height in meters
     double m_receiverWidth; //[m] Reciever opening width in meters
@@ -137,8 +138,8 @@ private:
 public:
 
 	// Methods
-	C_cavity_receiver(double hel_stow_deploy /*-*/, double T_htf_hot_des /*K*/, double q_dot_rec_des /*MWt*/,
-        double rec_qf_delay /*-*/, double rec_su_delay /*hr*/, int field_fl /*-*/, util::matrix_t<double> field_fl_props,
+	C_cavity_receiver(double dni_des /*W/m2*/, double hel_stow_deploy /*deg*/,
+        int field_fl /*-*/, util::matrix_t<double> field_fl_props,
         double rec_height /*m*/, double rec_width /*m*/, double toplip_height /*m*/, double botlip_height /*m*/,
         double eps_active_sol /*-*/, double eps_passive_sol /*-*/, double eps_active_therm /*-*/, double eps_passive_therm /*-*/,
         double elemSize );

@@ -50,17 +50,13 @@ bool sort_pair_ascending(pair<double,double> i, pair<double, double> j)
     }
 }
 
-C_cavity_receiver::C_cavity_receiver(double hel_stow_deploy /*-*/, double T_htf_hot_des /*K*/, double q_dot_rec_des /*MWt*/,
-    double rec_qf_delay /*-*/, double rec_su_delay /*hr*/, int field_fl /*-*/, util::matrix_t<double> field_fl_props,
+C_cavity_receiver::C_cavity_receiver(double dni_des /*W/m2*/, double hel_stow_deploy /*-*/,int field_fl /*-*/, util::matrix_t<double> field_fl_props,
     double rec_height /*m*/, double rec_width /*m*/, double toplip_height /*m*/, double botlip_height /*m*/,
     double eps_active_sol /*-*/, double eps_passive_sol /*-*/, double eps_active_therm /*-*/, double eps_passive_therm /*-*/,
     double elemSize )
 {
-    m_hel_stow_deploy = hel_stow_deploy;    //[-]
-    m_T_htf_hot_des = T_htf_hot_des;        //[K]
-    m_q_rec_des = q_dot_rec_des*1.E6;       //[Wt]
-    m_rec_qf_delay = rec_qf_delay;          //[-]
-    m_rec_su_delay = rec_su_delay;          //[hr]
+    m_dni_des = dni_des;                    //[W/m2]
+    m_hel_stow_deploy = hel_stow_deploy;    //[deg]
     m_field_fl = field_fl;                  //[-]
     m_field_fl_props = field_fl_props;      //[-]
 
@@ -2205,7 +2201,14 @@ void C_cavity_receiver::min_max_vects_from_columns(const util::matrix_t<double>&
 
 void C_cavity_receiver::init()
 {
-	// ******************************************
+    // ******************************************
+    // Unit conversions
+    // ******************************************
+    m_T_htf_hot_des += 273.15;	//[K] Convert from input in [C]
+    m_T_htf_cold_des += 273.15;	//[K] Convert from input in [C]
+    m_q_rec_des *= 1.E6;		//[W] Convert from input in [MW]
+
+    // ******************************************
     // Set up cavity geometry and view factors
     // ******************************************
 
@@ -2307,14 +2310,14 @@ void C_cavity_receiver::call(const C_csp_weatherreader::S_outputs& weather,
     double T_amb = weather.m_tdry + 273.15;                     //[K] convert from C
 
     // Read in remaining weather inputs from weather output structure
-    double zenith = weather.m_solzen;
-    double azimuth = weather.m_solazi;
-    double v_wind_10 = weather.m_wspd;
-    double I_bn = weather.m_beam;
+    double zenith = weather.m_solzen;       //[deg]
+    double azimuth = weather.m_solazi;      //[deg]
+    double v_wind_10 = weather.m_wspd;      //[m/s]
+    double I_bn = weather.m_beam;           //[W/m2]
 
 
 
-    bool debugthis = true;
+    bool debugthis = false;
     if (debugthis) {
         zenith = 0.0;
         azimuth = 0.0;
@@ -2339,17 +2342,10 @@ void C_cavity_receiver::call(const C_csp_weatherreader::S_outputs& weather,
         rec_is_off = true;
     }
 
-    if (zenith > (90.0 - m_hel_stow_deploy) || I_bn <= 1.E-6 || (zenith == 0.0 && azimuth == 180.0))
+    if (zenith > (90.0 - m_hel_stow_deploy) || I_bn <= m_f_rec_min*m_dni_des || (zenith == 0.0 && azimuth == 180.0))
     {
-        if (m_night_recirc == 1)
-        {
-            I_bn = 0.0;
-        }
-        else
-        {
-            m_mode = C_csp_collector_receiver::OFF;
-            rec_is_off = true;
-        }
+        m_mode = C_csp_collector_receiver::OFF;
+        rec_is_off = true;
     }
 
     double T_coolant_prop = (m_T_htf_hot_des + T_salt_cold_in) / 2.0;		//[K] The temperature at which the coolant properties are evaluated. Validated as constant (mjw)
@@ -2363,6 +2359,8 @@ void C_cavity_receiver::call(const C_csp_weatherreader::S_outputs& weather,
         m_od_control = fmin(m_od_control + (1.0 - field_eff / m_eta_field_iter_prev), 1.0);
     }
 
+    double m_dot_htf_tot = std::numeric_limits<double>::quiet_NaN();        //[kg/s]
+    double T_htf_hot_calc = std::numeric_limits<double>::quiet_NaN();       //[K]
     if (!rec_is_off) {
 
         // Solve receiver performance
@@ -2385,7 +2383,8 @@ void C_cavity_receiver::call(const C_csp_weatherreader::S_outputs& weather,
 
         //util::matrix_t<double> solarFlux(m_nElems, 1, std::numeric_limits<double>::quiet_NaN());
 
-        double flux_scale = 360000.0;       //[W/m2]
+        double field_eff_des = 0.6;     //[-] Guess design field efficiency
+        double flux_scale = 360000.0 / m_dni_des * I_bn / field_eff_des * field_eff;       //[W/m2]
         vector<double> solarFlux = vector<double>{ 0.60,
             0.60,
             0.80,
@@ -2444,7 +2443,7 @@ void C_cavity_receiver::call(const C_csp_weatherreader::S_outputs& weather,
 
         Eigen::MatrixXd EsolarFlux(solarFlux.size(), 1);
         for (size_t i = 0; i < solarFlux.size(); i++) {
-            EsolarFlux(i, 0) = solarFlux[i]*flux_scale;
+            EsolarFlux(i, 0) = solarFlux[i] * flux_scale;
         }
 
         // Assign conductance between HTF and each element
@@ -2453,7 +2452,7 @@ void C_cavity_receiver::call(const C_csp_weatherreader::S_outputs& weather,
         E_U.setConstant(std::numeric_limits<double>::quiet_NaN());
         for (size_t i_surf = 0; i_surf < mv_rec_surfs.size(); i_surf++) {
             for (size_t i = 0; i < m_v_elems[i_surf].nrows(); i++) {
-                E_U(m_surfIDs[i_surf](i,0),0) = UA_elemental*(double)mv_rec_surfs[i_surf].is_active_surf/mE_areas(m_surfIDs[i_surf](i,0),0);
+                E_U(m_surfIDs[i_surf](i, 0), 0) = UA_elemental * (double)mv_rec_surfs[i_surf].is_active_surf / mE_areas(m_surfIDs[i_surf](i, 0), 0);
             }
         }
 
@@ -2467,9 +2466,9 @@ void C_cavity_receiver::call(const C_csp_weatherreader::S_outputs& weather,
 
             size_t nSteps = FCM.nrows();
             std::vector<double> stepTemp(nSteps);
-            double deltaT = (m_T_htf_hot_des - T_salt_cold_in) / (double)(nSteps-1);
+            double deltaT = (m_T_htf_hot_des - T_salt_cold_in) / (double)(nSteps - 1);
             for (size_t i = 0; i < nSteps; i++) {
-                stepTemp[i] = T_salt_cold_in + deltaT*i;
+                stepTemp[i] = T_salt_cold_in + deltaT * i;
             }
 
             for (size_t i = 0; i < nSteps; i++) {
@@ -2487,51 +2486,52 @@ void C_cavity_receiver::call(const C_csp_weatherreader::S_outputs& weather,
         for (size_t i = 0; i < eq2.rows(); i++) {
             for (size_t j = 0; j < eq2.cols(); j++) {
                 eq2(i, j) = eq1(i, 0);
-                epsS_square(i,j) = mE_epsilonSol(i,0);
+                epsS_square(i, j) = mE_epsilonSol(i, 0);
             }
         }
-        Eigen::MatrixXd eq3 = (eq2.array()*mE_FHatS.array()).matrix() * mE_epsilonSol;
+        Eigen::MatrixXd eq3 = (eq2.array() * mE_FHatS.array()).matrix() * mE_epsilonSol;
 
-        Eigen::MatrixXd eq4 = (epsS_square.array()*mE_FHatS.transpose().array()).matrix()*(EsolarFlux.array()*mE_areas.array()*mE_rhoSol.array()).matrix();
+        Eigen::MatrixXd eq4 = (epsS_square.array() * mE_FHatS.transpose().array()).matrix() * (EsolarFlux.array() * mE_areas.array() * mE_rhoSol.array()).matrix();
 
         Eigen::MatrixXd EqSolOut = eq3 + eq4;
 
-        Eigen::MatrixXd E_b(EqIn.rows()-1,1);
+        Eigen::MatrixXd E_b(EqIn.rows() - 1, 1);
         for (size_t i = 0; i < EqIn.rows() - 1; i++) {
-            E_b(i,0) = (EqIn(i,0)+EqSolOut(i,0)) / (mE_epsilonTherm(i,0)*mE_areas(i,0)*CSP::sigma) +
-                    mE_epsilonTherm(m_nElems-1,0)*mE_FHatT(i,m_nElems-1)*pow(T_amb, 4);
+            E_b(i, 0) = (EqIn(i, 0) + EqSolOut(i, 0)) / (mE_epsilonTherm(i, 0) * mE_areas(i, 0) * CSP::sigma) +
+                mE_epsilonTherm(m_nElems - 1, 0) * mE_FHatT(i, m_nElems - 1) * pow(T_amb, 4);
         }
 
-        Eigen::MatrixXd E_eye = Eigen::MatrixXd::Identity(m_nElems-1,m_nElems-1);
+        Eigen::MatrixXd E_eye = Eigen::MatrixXd::Identity(m_nElems - 1, m_nElems - 1);
 
         Eigen::MatrixXd E_epsT_trans = mE_epsilonTherm.transpose();
         E_epsT_trans.conservativeResize(m_nElems - 1, m_nElems - 1);
         for (size_t i = 0; i < m_nElems - 1; i++) {
             for (size_t j = 0; j < m_nElems - 1; j++) {
-                E_epsT_trans(i,j) = E_epsT_trans(0,j);
+                E_epsT_trans(i, j) = E_epsT_trans(0, j);
             }
         }
 
-        Eigen::MatrixXd E_A_1 = -1.0*E_epsT_trans.array()* mE_FHatT.block(0, 0, m_nElems - 1, m_nElems-1).array();
+        Eigen::MatrixXd E_A_1 = -1.0 * E_epsT_trans.array() * mE_FHatT.block(0, 0, m_nElems - 1, m_nElems - 1).array();
 
         Eigen::MatrixXd E_A_2 = mE_FHatT.block(0, 0, m_nElems - 1, m_nElems) * mE_epsilonTherm;
         Eigen::MatrixXd E_A_2_square(E_A_2.rows(), E_A_2.rows());
         for (size_t i = 0; i < E_A_2_square.rows(); i++) {
             for (size_t j = 0; j < E_A_2_square.rows(); j++) {
-                E_A_2_square(i,j) = E_A_2(i,0);
+                E_A_2_square(i, j) = E_A_2(i, 0);
             }
         }
-        Eigen::MatrixXd E_A_3 = E_A_2_square.array()*E_eye.array();
+        Eigen::MatrixXd E_A_3 = E_A_2_square.array() * E_eye.array();
         Eigen::MatrixXd E_A = E_A_1 + E_A_3;
 
         Eigen::MatrixXd E_Tmax1 = E_A.colPivHouseholderQr().solve(E_b);
         Eigen::MatrixXd E_Tmax = Eigen::pow(E_Tmax1.array(), 0.25);
 
         E_Tmax.conservativeResize(m_nElems, 1);
-        E_Tmax(m_nElems-1,0) = T_amb;
+        E_Tmax(m_nElems - 1, 0) = T_amb;
 
 
         // Start iteration between energy and fluid balances
+        // Outer loop iterates on nodal/element HTF temperature
         double error_T_HTF = 100.;
         int count = 0;
         double tol_T_HTF = 0.1;
@@ -2542,7 +2542,14 @@ void C_cavity_receiver::call(const C_csp_weatherreader::S_outputs& weather,
             Eigen::MatrixXd E_h;
             hbarCorrelation(E_Tmax, T_amb, E_h);
 
-            // iterate through total energy balance until temperatures converge
+            // solves the energy balance on the cavity reciver
+            // system for specified incident solar flux, fluid temperatures, and
+            // element view factors.The solution is achieved by first including only
+            // radiation heat transfer in the energy balance to obtain an initial
+            // guess for the complete iterative energy balance.This solution assumes that
+            // -- fluid temperatures at every panel element are known and fixed.
+            // -- mass flow rate is fixed
+
             Eigen::MatrixXd E_T = E_Tmax;
             double error_T = 1.0;
 
@@ -2602,9 +2609,11 @@ void C_cavity_receiver::call(const C_csp_weatherreader::S_outputs& weather,
 
             Eigen::MatrixXd E_Q_gain = E_U.array() * mE_areas.array() * (E_T.array() - E_T_HTF.array());   //[W]
 
+            // Using net energy (q_gain) at each node,
+            // solve for mass flow rate that achieves the target HTF outlet temperature
 
             double q_gain_net = E_Q_gain.sum();
-            double m_dot = q_gain_net / (nPipes * cp_htf * (m_T_htf_hot_des - T_salt_cold_in));
+            double m_dot = q_gain_net / (nPipes * cp_htf * (m_T_htf_hot_des - T_salt_cold_in));     //[kg/s[
             std::vector<util::matrix_t<double>> mt_T;
 
             double error_T_out = 100.0;
@@ -2653,12 +2662,12 @@ void C_cavity_receiver::call(const C_csp_weatherreader::S_outputs& weather,
                     }
                 }
 
-                double T_out = E_T_out_pipe.mean();         //[K]
-                error_T_out = T_out - m_T_htf_hot_des;      //[K]
+                T_htf_hot_calc = E_T_out_pipe.mean();         //[K]
+                error_T_out = T_htf_hot_calc - m_T_htf_hot_des;      //[K]
 
                 // adjust value of m_dot - usually not needed
-                double q_gain_total_new = m_dot * cp_htf * nPipes * (T_out - T_salt_cold_in); //[W]
-                m_dot = q_gain_total_new / (nPipes * cp_htf * (m_T_htf_hot_des - T_salt_cold_in));
+                double q_gain_total_calc = m_dot * cp_htf * nPipes * (T_htf_hot_calc - T_salt_cold_in);       //[W]
+                m_dot = q_gain_total_calc / (nPipes * cp_htf * (m_T_htf_hot_des - T_salt_cold_in));  //[kg/s]
             }
 
             Eigen::MatrixXd E_T_HTF_calc = Eigen::MatrixXd::Zero(m_nElems, 1);
@@ -2676,9 +2685,9 @@ void C_cavity_receiver::call(const C_csp_weatherreader::S_outputs& weather,
                 }
             }
 
-            double m_dot_total = m_dot * nPipes;
+            m_dot_htf_tot = m_dot * nPipes;     //[kg/s]
 
-            // Calculate difference between T_HTF and T_HTF_calc
+            // Calculate difference between nodal T_HTF and T_HTF_calc
             error_T_HTF = 0.0;
             for (size_t i = 0; i < m_nElems; i++) {
                 error_T_HTF = max(error_T_HTF, abs(E_T_HTF(i, 0) - E_T_HTF_calc(i, 0)));
@@ -2686,8 +2695,69 @@ void C_cavity_receiver::call(const C_csp_weatherreader::S_outputs& weather,
 
             E_T_HTF = E_T_HTF_calc;
         }
-
         // energy and fluid balance converged
+
+        W_dot_pump = 1.234E6;   //[W]
+    }
+
+    double time_required_su = step / 3600.0;        //[hr]
+    double q_startup = 0.0;     //[W-hr]
+    double q_dot_thermal = std::numeric_limits<double>::quiet_NaN();
+
+    if(!rec_is_off){
+        switch (input_operation_mode)
+        {
+        case C_csp_collector_receiver::STARTUP:
+            {
+                double time_require_su_energy = m_E_su_prev / (m_dot_htf_tot * cp_htf * (T_htf_hot_calc - T_salt_cold_in));	//[hr]
+                double time_require_su_ramping = m_t_su_prev;
+
+                double time_required_max = fmax(time_require_su_energy, time_require_su_ramping);	//[hr]
+
+                double time_step_hrs = step / 3600.0;		//[hr]
+
+                if (time_required_max > time_step_hrs)		// Can't completely startup receiver in maximum allowable timestep
+                {											// Need to advance timestep and try again
+                    time_required_su = time_step_hrs;       //[hr]
+                    m_mode = C_csp_collector_receiver::STARTUP;
+                    q_startup = m_dot_htf_tot * cp_htf * (T_htf_hot_calc - T_salt_cold_in) * step / 3600.0; //[W]
+                }
+                else
+                {
+                    time_required_su = time_required_max;		//[hr]
+                    m_mode = C_csp_collector_receiver::ON;
+
+                    double q_startup_energy_req = m_E_su_prev;	//[W-hr]
+                    double q_startup_ramping_req = m_dot_htf_tot * cp_htf * (T_htf_hot_calc - T_salt_cold_in) * m_t_su_prev;	//[W-hr]
+                    q_startup = fmax(q_startup_energy_req, q_startup_ramping_req);      //[W-hr]
+                }
+
+                m_E_su = fmax(0.0, m_E_su_prev - m_dot_htf_tot * cp_htf * (T_htf_hot_calc - T_salt_cold_in) * step / 3600.0);
+                m_t_su = fmax(0.0, m_t_su_prev - step / 3600.0);
+            }
+
+            rec_is_off = true;
+
+            break;
+
+        case C_csp_collector_receiver::ON:
+
+            m_mode = C_csp_collector_receiver::ON;
+            q_startup = 0.0;
+
+
+            break;
+
+        case C_csp_collector_receiver::STEADY_STATE:
+
+            m_mode = C_csp_collector_receiver::STEADY_STATE;
+
+            break;
+
+        }	// End switch() on input_operation_mode
+
+        q_dot_thermal = m_dot_htf_tot * cp_htf * (T_htf_hot_calc - T_salt_cold_in);     //[W]
+
     }
     else {
         // If receiver was off BEFORE startup deductions
@@ -2699,6 +2769,52 @@ void C_cavity_receiver::call(const C_csp_weatherreader::S_outputs& weather,
         DELTAP = 0.0; Pres_D = 0.0; u_coolant = 0.0;
     }
 
+    if (rec_is_off){
+        ms_outputs.m_m_dot_salt_tot = 0.0;  //[kg/hr]
+        ms_outputs.m_eta_therm = 0.0;       //[-]
+        ms_outputs.m_q_conv_sum = 0.0;      //[MWt]
+        ms_outputs.m_q_rad_sum = 0.0;       //[MWt]
+        ms_outputs.m_Q_thermal = 0.0;       //[MWt]
+        ms_outputs.m_T_salt_hot = m_T_htf_cold_des - 273.15;    //[C] convert from K
+        ms_outputs.m_q_dot_rec_inc = 0.0;   //[MWt]
+        ms_outputs.m_m_dot_ss = 0.0;        //[kg/hr]
+        ms_outputs.m_q_dot_ss = 0.0;        //[MWt]
+        ms_outputs.m_Q_thermal_csky_ss = 0.0;   //[MWt]
+        ms_outputs.m_Q_thermal_ss = 0.0;
+
+        m_od_control = 1.0;
+    }
+    else {
+        ms_outputs.m_m_dot_salt_tot = m_dot_htf_tot * 3600.0;   //[kg/hr] convert from kg/s
+        ms_outputs.m_eta_therm = std::numeric_limits<double>::quiet_NaN();       //[-]
+        ms_outputs.m_q_conv_sum = std::numeric_limits<double>::quiet_NaN(); //[MWt]
+        ms_outputs.m_q_rad_sum = std::numeric_limits<double>::quiet_NaN();  //[MWt]
+        ms_outputs.m_Q_thermal = q_dot_thermal / 1.E6;          //[MWt] convert from W
+        ms_outputs.m_T_salt_hot = T_htf_hot_calc - 273.15;               //[C] convert from K
+        ms_outputs.m_q_dot_rec_inc = std::numeric_limits<double>::quiet_NaN();  //[MWt]
+        ms_outputs.m_T_salt_cold = T_salt_cold_in - 273.15;     //[C] convert from K
+        ms_outputs.m_m_dot_ss = std::numeric_limits<double>::quiet_NaN();
+        ms_outputs.m_q_dot_ss = std::numeric_limits<double>::quiet_NaN();
+        ms_outputs.m_Q_thermal_csky_ss = std::numeric_limits<double>::quiet_NaN();
+        ms_outputs.m_Q_thermal_ss = std::numeric_limits<double>::quiet_NaN();
+    }
+
+    ms_outputs.m_W_dot_pump = W_dot_pump / 1.E6;            //[MWe] convert from W
+    ms_outputs.m_field_eff_adj = field_eff_adj;             //[-]
+    ms_outputs.m_component_defocus = m_od_control;          //[-]
+    ms_outputs.m_q_startup = q_startup / 1.E6;              //[MW-hr] convert from [W-hr]
+    ms_outputs.m_dP_receiver = std::numeric_limits<double>::quiet_NaN();    //[bar]
+    ms_outputs.m_dP_total = std::numeric_limits<double>::quiet_NaN();       //[bar]
+    ms_outputs.m_vel_htf = std::numeric_limits<double>::quiet_NaN();        //[m/s]
+    ms_outputs.m_f_timestep = std::numeric_limits<double>::quiet_NaN();
+    ms_outputs.m_time_required_su = time_required_su * 3600.0;        //[s], convert from hr
+    ms_outputs.m_q_dot_piping_loss = std::numeric_limits<double>::quiet_NaN();
+    ms_outputs.m_q_heattrace = 0.0;
+    ms_outputs.m_clearsky = std::numeric_limits<double>::quiet_NaN();
+
+
+    m_eta_field_iter_prev = field_eff;	//[-]
+
 	return;
 }
 
@@ -2706,6 +2822,35 @@ void C_cavity_receiver::off(const C_csp_weatherreader::S_outputs& weather,
 	const C_csp_solver_htf_1state& htf_state_in,
 	const C_csp_solver_sim_info& sim_info)
 {
+    // Don't currently need *any* of these inputs, but if we add recirculation or thermal capacitance it would be helpful to have in place
+    m_mode = C_csp_collector_receiver::OFF;
+
+    // Assuming no night recirculation, so... these should be zero
+    ms_outputs.m_m_dot_salt_tot = 0.0;		//[kg/hr] convert from kg/s
+    ms_outputs.m_eta_therm = 0.0;			//[-] RECEIVER thermal efficiency (includes radiation and convective losses. reflection losses are contained in receiver flux model)
+    ms_outputs.m_W_dot_pump = 0.0;			//[MW] convert from W
+    ms_outputs.m_q_conv_sum = 0.0;			//[MW] convert from W
+    ms_outputs.m_q_rad_sum = 0.0;			//[MW] convert from W
+    ms_outputs.m_Q_thermal = 0.0;			//[MW] convert from W
+    ms_outputs.m_T_salt_hot = 0.0;			//[C] convert from K
+    ms_outputs.m_field_eff_adj = 0.0;		//[-]
+    ms_outputs.m_component_defocus = 1.0;	//[-]
+    ms_outputs.m_q_dot_rec_inc = 0.0;		//[MW] convert from kW
+    ms_outputs.m_q_startup = 0.0;			//[MW-hr] convert from W-hr
+    ms_outputs.m_dP_receiver = 0.0;			//[bar] receiver pressure drop, convert from Pa
+    ms_outputs.m_dP_total = 0.0;			//[bar] total pressure drop, convert from MPa
+    ms_outputs.m_vel_htf = 0.0;				//[m/s]
+    ms_outputs.m_T_salt_cold = 0.0;			//[C] convert from K
+    ms_outputs.m_m_dot_ss = 0.0;			//[kg/hr] convert from kg/s
+    ms_outputs.m_q_dot_ss = 0.0;			//[MW] convert from W
+    ms_outputs.m_f_timestep = 0.0;			//[-]
+    ms_outputs.m_time_required_su = sim_info.ms_ts.m_step;	//[s], convert from hr in code
+    ms_outputs.m_q_dot_piping_loss = 0.0;	//[MWt]
+    ms_outputs.m_q_heattrace = 0.0;
+    
+    ms_outputs.m_clearsky = get_clearsky(weather, sim_info.ms_ts.m_time / 3600.);  // clear-sky DNI (set to actual DNI if actual DNI is higher than computed clear-sky value)
+    ms_outputs.m_Q_thermal_csky_ss = 0.0; //[MWt]
+    ms_outputs.m_Q_thermal_ss = 0.0; //[MWt]
 
 	return;
 }
