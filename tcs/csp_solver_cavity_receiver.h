@@ -79,6 +79,10 @@ private:
     double m_dni_des;               //[W/m2]
     double m_hel_stow_deploy;		//[deg]
 
+    double m_od_rec_tube;   //[m] single tube outer diameter
+    double m_th_rec_tube;   //[m] single tube wall thickness
+    int m_tube_mat_code;    //[-]
+
     double m_receiverHeight; //[m] Receiver opening height in meters
     double m_receiverWidth; //[m] Reciever opening width in meters
     double m_topLipHeight;  //[m] Height of top lip in meters
@@ -87,6 +91,10 @@ private:
     double m_e_pass_sol;    //[-] Absorbtivity in short wave range for passive surfaces
     double m_e_act_therm;   //[-] Emissivity in long wave range for active surfaces
     double m_e_pass_therm;  //[-] Emissivity in long wave range for passive surfaces
+
+    double m_pipe_loss_per_m;		//[Wt/m]
+    double m_pipe_length_add;		//[m]
+    double m_pipe_length_mult;		//[-]
 
     double m_elemSize;      //
     // ************************************
@@ -103,6 +111,7 @@ private:
     Eigen::MatrixXd mE_areas;                   // global element areas, each row indexed by m_surfIDs
     util::matrix_t<double> m_centroids;         // global element centroids, each row indexed by m_surfIDs
     size_t m_nElems;                            // global element centroids, each row indexed by m_surfIDs
+    double m_area_active_total;                 // [m2] total surface area of all active elements
 
     util::matrix_t<double> m_epsilonSol;        // global element solar emissivity 
     Eigen::MatrixXd mE_epsilonSol;              // global element solar emissivity
@@ -120,6 +129,11 @@ private:
 
     Eigen::MatrixXd mE_rhoSol;                  // global element solar reflectivity
     Eigen::MatrixXd mE_rhoTherm;                // global element thermal reflectivity
+
+    double m_d_in_rec_tube;             //[m]
+    double m_A_cs_tube;                 //[m2]
+    size_t m_Ntubes;                    //[-]
+    double m_Q_dot_piping_loss;         //[Wt] = Constant thermal losses from piping to env. = (THT*length_mult + length_add) * piping_loss_coef
 
     // ************************************
     // Call variables
@@ -140,8 +154,10 @@ public:
 	// Methods
 	C_cavity_receiver(double dni_des /*W/m2*/, double hel_stow_deploy /*deg*/,
         int field_fl /*-*/, util::matrix_t<double> field_fl_props,
+        double od_rec_tube /*m*/, double th_rec_tube /*m*/, int tube_mat_code /*-*/,
         double rec_height /*m*/, double rec_width /*m*/, double toplip_height /*m*/, double botlip_height /*m*/,
         double eps_active_sol /*-*/, double eps_passive_sol /*-*/, double eps_active_therm /*-*/, double eps_passive_therm /*-*/,
+        double pipe_loss_per_m /*Wt/m*/, double pipe_length_add /*m*/, double pipe_length_mult /*-*/,
         double elemSize );
 
 	~C_cavity_receiver() {};

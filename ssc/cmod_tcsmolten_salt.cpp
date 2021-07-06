@@ -1594,6 +1594,9 @@ public:
 
             double hel_stow_deploy = as_double("hel_stow_deploy");          //[deg]
 
+            double od_rec_tube = 0.050;     //[m] inner diameter
+            double th_rec_tube = 0.005/2.0; //[m] tube thickness
+
             double receiverHeight = 12;     //[m] Receiver opening height in meters
             double receiverWidth = 14;      //[m] Reciever opening width in meters
             double topLipHeight = 1;        //[m] Height of top lip in meters
@@ -1608,8 +1611,11 @@ public:
 
             std::unique_ptr<C_cavity_receiver> c_cav_rec = std::unique_ptr<C_cavity_receiver>(new C_cavity_receiver(as_double("dni_des"), hel_stow_deploy,
                 as_integer("rec_htf"), as_matrix("field_fl_props"),
+                od_rec_tube, th_rec_tube, as_integer("mat_tube"),
                 receiverHeight, receiverWidth, topLipHeight, botLipHeight,
-                e_act_sol, e_pass_sol, e_act_therm, e_pass_therm, elemSize));
+                e_act_sol, e_pass_sol, e_act_therm, e_pass_therm,
+                as_double("piping_loss"), as_double("piping_length_const"), as_double("piping_length_mult"),
+                elemSize));
 
             receiver = std::move(c_cav_rec);
         }        
