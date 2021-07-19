@@ -55,8 +55,7 @@ C_cavity_receiver::C_cavity_receiver(double dni_des /*W/m2*/, double hel_stow_de
     double od_rec_tube /*m*/, double th_rec_tube /*m*/, int tube_mat_code /*-*/,
     double rec_height /*m*/, double rec_width /*m*/, double toplip_height /*m*/, double botlip_height /*m*/,
     double eps_active_sol /*-*/, double eps_passive_sol /*-*/, double eps_active_therm /*-*/, double eps_passive_therm /*-*/,
-    double pipe_loss_per_m /*Wt/m*/, double pipe_length_add /*m*/, double pipe_length_mult /*-*/,
-    double elemSize )
+    double pipe_loss_per_m /*Wt/m*/, double pipe_length_add /*m*/, double pipe_length_mult /*-*/)
 {
     m_dni_des = dni_des;                    //[W/m2]
     m_hel_stow_deploy = hel_stow_deploy;    //[deg]
@@ -80,8 +79,6 @@ C_cavity_receiver::C_cavity_receiver(double dni_des /*W/m2*/, double hel_stow_de
     m_pipe_length_add = pipe_length_add;    //[m]
     m_pipe_length_mult = pipe_length_mult;  //[-]
 
-    m_elemSize = elemSize;
-
     m_area_active_total = std::numeric_limits<double>::quiet_NaN();
     m_d_in_rec_tube = std::numeric_limits<double>::quiet_NaN();
     m_A_cs_tube = std::numeric_limits<double>::quiet_NaN();
@@ -96,8 +93,7 @@ void C_cavity_receiver::genOctCavity()
     
     // Creates geometry (i.e. defines vertices) for a 4-panel half-octagonal cavity receiver
     // of specified width, height, and with or without upper and lower lips
-    size_t nPanels = 4;
-    mv_rec_surfs.resize(nPanels + 5);
+    mv_rec_surfs.resize(m_nPanels + 5);
 
     mv_rec_surfs[PANEL1].type = 0; // 1;
     mv_rec_surfs[PANEL2].type = 0; // 1;
@@ -142,14 +138,23 @@ void C_cavity_receiver::genOctCavity()
         }
     }
 
-    double theta = CSP::pi / (double)nPanels;   //[rad]
+    // Polygon interior angle
+    // Assumes center of polygon is center of aperture
+    double theta = CSP::pi / (double)m_nPanels;   //[rad]
+
+    // Calculate element sizes for mesh based on dimensions and model resolution parameter
+    double panelWidth = 2.0*(m_receiverWidth/2.0)*sin(theta/2.0);    //[m]
+    mv_rec_surfs[PANEL1].surf_elem_size = panelWidth / (double)m_pipeWindings / (double)m_modelRes;
+    mv_rec_surfs[PANEL4].surf_elem_size = mv_rec_surfs[PANEL3].surf_elem_size = mv_rec_surfs[PANEL2].surf_elem_size = mv_rec_surfs[PANEL1].surf_elem_size;
+    mv_rec_surfs[FLOOR].surf_elem_size = mv_rec_surfs[COVER].surf_elem_size = m_receiverWidth / 4.0 / m_modelRes;
+    mv_rec_surfs[TOPLIP].surf_elem_size = mv_rec_surfs[BOTLIP].surf_elem_size = m_receiverWidth / 6.0 / m_modelRes;
 
     // matrix_t(nr, nc, val)
     // (x, y, z)
-    mv_rec_surfs[FLOOR].vertices.resize_fill(nPanels + 1, 3, 0.0);
-    mv_rec_surfs[COVER].vertices.resize_fill(nPanels + 1, 3, 0.0);
+    mv_rec_surfs[FLOOR].vertices.resize_fill(m_nPanels + 1, 3, 0.0);
+    mv_rec_surfs[COVER].vertices.resize_fill(m_nPanels + 1, 3, 0.0);
 
-    for (size_t i = 0; i < nPanels+1; i++) {
+    for (size_t i = 0; i < m_nPanels+1; i++) {
         mv_rec_surfs[FLOOR].vertices(i, 0) = mv_rec_surfs[COVER].vertices(i, 0) = m_receiverWidth * cos(i * theta)/2.0;
         mv_rec_surfs[FLOOR].vertices(i, 1) = mv_rec_surfs[COVER].vertices(i, 1) = m_receiverWidth * sin(i * theta)/2.0;
         mv_rec_surfs[FLOOR].vertices(i, 2) = -m_receiverHeight / 2.0;
@@ -159,7 +164,7 @@ void C_cavity_receiver::genOctCavity()
     util::matrix_t<double> temp_total(4, 3, std::numeric_limits<double>::quiet_NaN());
     util::matrix_t<double> temp_p1(4, 3, std::numeric_limits<double>::quiet_NaN());
 
-    for (size_t n = 0; n < nPanels; n++) {
+    for (size_t n = 0; n < m_nPanels; n++) {
         temp_p1 = mv_rec_surfs[FLOOR].vertices.row(n);
         for (size_t i = 0; i < temp_p1.length(); i++) {
             temp_total(0, i) = temp_p1(0, i);
@@ -199,7 +204,7 @@ void C_cavity_receiver::genOctCavity()
         for (size_t i = 0; i < temp_p1.length(); i++) {
             mv_rec_surfs[APERTURE].vertices(0, i) = temp_p1(0, i);
         }
-        temp_p1 = mv_rec_surfs[COVER].vertices.row(nPanels);
+        temp_p1 = mv_rec_surfs[COVER].vertices.row(m_nPanels);
         for (size_t i = 0; i < temp_p1.length(); i++) {
             mv_rec_surfs[APERTURE].vertices(1, i) = temp_p1(0, i);
         }
@@ -226,7 +231,7 @@ void C_cavity_receiver::genOctCavity()
     }
 
     if (m_botLipHeight <= 0.0) {
-        temp_p1 = mv_rec_surfs[FLOOR].vertices.row(nPanels);
+        temp_p1 = mv_rec_surfs[FLOOR].vertices.row(m_nPanels);
         for (size_t i = 0; i < temp_p1.length(); i++) {
             mv_rec_surfs[APERTURE].vertices(2, i) = temp_p1(0, i);
         }
@@ -293,7 +298,7 @@ void C_cavity_receiver::meshGeometry()
         else {
             if (type == 0) {
                 // Mesh with quads
-                meshMapped(surf, m_elemSize, nodes, elems);
+                meshMapped(surf, mv_rec_surfs[i].surf_elem_size, nodes, elems);
                 v_nodes.push_back(nodes);
             }
             else if (type == 1) {
@@ -303,7 +308,7 @@ void C_cavity_receiver::meshGeometry()
             else if (type == 2) {
                 // Mesh with triangles: meshPolygon method
                 throw(C_csp_exception("Triangle mesh method meshPolygon not currently supported. Need to add qhull project"));
-                meshPolygon(surf, m_elemSize);
+                meshPolygon(surf, mv_rec_surfs[i].surf_elem_size);
             }
             else {
                 // Mesh as a single element
@@ -524,6 +529,116 @@ void C_cavity_receiver::surfValuesToElems()
         }
     }
 
+}
+
+void C_cavity_receiver::zigzagRouting()
+{
+    double tol = 0.05;      //[-] fraction of receiver height
+    int maxDim = m_centroids.nrows();
+
+    size_t maxRow = 0;
+    size_t maxCol = 0;
+
+    size_t panels_per_path = m_nPanels / m_nPaths;
+    util::matrix_t<int> flow_route(m_nPaths, panels_per_path, 0);
+
+
+    for (size_t j = 0; j < panels_per_path; j++){
+        if (m_is_centerOutFlow) {
+            flow_route(0,j) = panels_per_path - j -1;
+            flow_route(1,j) = panels_per_path + j;
+        }
+        else {
+            flow_route(0,j) = j;
+            flow_route(1,j) = m_nPanels - j - 1;
+        }
+    }
+        
+    for (size_t h = 0; h < m_nPaths; h++) {
+
+        util::matrix_t<int> FCM(maxDim, maxDim, -1);
+        size_t count = 0;
+
+        for (size_t i_path = 0; i_path < flow_route.ncols(); i_path++) {
+            size_t i = flow_route(h, i_path);
+
+            util::matrix_t<int> elemIDs = m_surfIDs[i];
+            size_t nElems = elemIDs.nrows();
+
+            util::matrix_t<double> cents(nElems, 3);
+            util::matrix_t<double> cent_local;
+            for (size_t j = 0; j < nElems; j++) {
+                cent_local = m_centroids.row(elemIDs[j]);
+                for (size_t k = 0; k < 3; k++) {
+                    cents(j, k) = cent_local(0, k);
+                }
+            }
+
+            Eigen::MatrixXd E_cents;
+            matrixt_to_eigen(cents, E_cents);
+
+            Eigen::MatrixXd E_aimpoint(1, 3);
+            E_aimpoint.row(0) << 10.0*0, 10.0*m_receiverHeight, 10.0*m_receiverHeight;
+
+            Eigen::MatrixXd E_panelOrigin = furthest(E_cents, E_aimpoint);
+
+            E_aimpoint.row(0) << 10.0, -10.0 * m_receiverHeight, 10.0 * m_receiverHeight;
+
+            Eigen::MatrixXd E_panelXaxis = furthest(E_cents, E_aimpoint).array() - E_panelOrigin.array();
+
+            Eigen::MatrixXd E_panelYaxis = nearest(E_cents, E_aimpoint).array() - E_panelOrigin.array();
+
+            Eigen::Vector3d V_panelXaxis(3);
+            V_panelXaxis << E_panelXaxis(0,0), E_panelXaxis(0,1), E_panelXaxis(0,2);
+            Eigen::Vector3d V_panelYaxis(3);
+            V_panelYaxis << E_panelYaxis(0, 0), E_panelYaxis(0, 1), E_panelYaxis(0, 2);
+            Eigen::MatrixXd E_panelNorm = V_panelXaxis.cross(V_panelYaxis);
+
+        }
+    }
+
+}
+
+Eigen::MatrixXd C_cavity_receiver::furthest(const Eigen::MatrixXd cents, const Eigen::MatrixXd aimpoint)
+{
+    size_t nrows = cents.rows();
+
+    double max = 0.0;
+    double norm = 0.0;
+    size_t i_max = 0;
+
+    Eigen::MatrixXd diff;
+    for (size_t i = 0; i < nrows; i++) {
+        diff = cents.row(i).array() - aimpoint.row(0).array();
+        norm = diff.norm();
+        if (norm > max) {
+            max = norm;
+            i_max = i;
+        }
+    }
+
+    return cents.row(i_max);
+}
+
+Eigen::MatrixXd C_cavity_receiver::nearest(const Eigen::MatrixXd cents, const Eigen::MatrixXd aimpoint)
+{
+    size_t nrows = cents.rows();
+
+    double min = 1.E6;
+    double norm = 0.0;
+    size_t i_min = 0;
+
+    Eigen::MatrixXd diff;
+    for (size_t i = 0; i < nrows; i++) {
+        diff = cents.row(i).array() - aimpoint.row(0).array();
+        norm = diff.norm();
+        if (norm < min) {
+            min = norm;
+            i_min = i;
+        }
+    }
+
+    return cents.row(i_min);
 }
 
 void C_cavity_receiver::zigzagRouting(size_t n_steps)
@@ -845,6 +960,19 @@ void C_cavity_receiver::matrixt_to_eigen(const util::matrix_t<double>& matrixt,
     for (size_t i = 0; i < matrixt.nrows(); i++) {
         for (size_t j = 0; j < matrixt.ncols(); j++) {
             eigenx(i,j) = matrixt(i,j);
+        }
+    }
+}
+
+void C_cavity_receiver::eigen_to_matrixt(const Eigen::MatrixXd& eigenx,
+    util::matrix_t<double>& matrixt)
+{
+    size_t nrows = eigenx.rows();
+    size_t ncols = eigenx.cols();
+    matrixt.resize(eigenx.rows(), eigenx.cols());
+    for (size_t i = 0; i < nrows; i++) {
+        for (size_t j = 0; j < ncols; j++) {
+            matrixt(i,j) = eigenx(i,j);
         }
     }
 }
@@ -2238,8 +2366,14 @@ void C_cavity_receiver::init()
     // ******************************************
     // Set up cavity geometry and view factors
     // ******************************************
-
-    size_t pipeWindings = 5;    // round(receiverHeight / min(elemSizes))   // 1
+    m_nPanels = 4;
+    
+    //size_t pipeWindings = 5;    // round(receiverHeight / min(elemSizes))   // 1
+    m_pipeWindings = m_nPanels;   //[-]
+    m_modelRes = 1;
+    m_is_bottomUpFlow = true;
+    m_is_centerOutFlow = true;
+    m_nPaths = 2;
 
     // This should be dependent on mesh geometry and tube sizes?
     m_Ntubes = 30;
@@ -2260,8 +2394,11 @@ void C_cavity_receiver::init()
     // Assign global element solar and thermal emissivity
     surfValuesToElems();
 
+    //
+    zigzagRouting();
+
     // Define fluid connectivity array
-    zigzagRouting(pipeWindings);
+    zigzagRouting(m_pipeWindings);
 
     // Calculate view factors
     VFMatrix();
@@ -2392,7 +2529,7 @@ void C_cavity_receiver::call(const C_csp_weatherreader::S_outputs& weather,
     // Used to scale hard-coded flux map
     double field_eff_des = 0.6;     
 
-    bool debugthis = false;
+    bool debugthis = true;
     if (debugthis) {
         zenith = 0.0;
         azimuth = 0.0;

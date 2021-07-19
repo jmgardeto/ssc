@@ -46,13 +46,20 @@ public:
     class C_rec_surface
     {
     public:
-        util::matrix_t<double> vertices;    // (nr, nc) -> (vertex index, dimension (i.e. xyx))
+        util::matrix_t<double> vertices;    // (nr, nc) -> (vertex index, dimension [m] (i.e. xyx))
         size_t type;                // mesh type: 0=triangle, 1=quad, 2=single element
         bool is_active_surf;        // True: active surface w/ HTF, False: passive surface no HTF
         bool is_flipRoute;
         double eps_sol;             //[-]
         double eps_therm;           //[-]
+        double surf_elem_size;      //[m (I think)]
 
+        C_rec_surface()
+        {
+            type = 10;
+            is_active_surf = is_flipRoute = false;
+            eps_sol = eps_therm = surf_elem_size = std::numeric_limits<double>::quiet_NaN();
+        }
     };
 
     enum surf_order
@@ -79,6 +86,13 @@ private:
     double m_dni_des;               //[W/m2]
     double m_hel_stow_deploy;		//[deg]
 
+    size_t m_nPanels;       //[-]
+    size_t m_pipeWindings;  //[-]
+    size_t m_modelRes;      //[-]
+    size_t m_nPaths;        //[-]
+    bool m_is_bottomUpFlow;     //[-]
+    bool m_is_centerOutFlow;    //[-]
+
     double m_od_rec_tube;   //[m] single tube outer diameter
     double m_th_rec_tube;   //[m] single tube wall thickness
     int m_tube_mat_code;    //[-]
@@ -96,7 +110,6 @@ private:
     double m_pipe_length_add;		//[m]
     double m_pipe_length_mult;		//[-]
 
-    double m_elemSize;      //
     // ************************************
 
     // ************************************
@@ -157,8 +170,7 @@ public:
         double od_rec_tube /*m*/, double th_rec_tube /*m*/, int tube_mat_code /*-*/,
         double rec_height /*m*/, double rec_width /*m*/, double toplip_height /*m*/, double botlip_height /*m*/,
         double eps_active_sol /*-*/, double eps_passive_sol /*-*/, double eps_active_therm /*-*/, double eps_passive_therm /*-*/,
-        double pipe_loss_per_m /*Wt/m*/, double pipe_length_add /*m*/, double pipe_length_mult /*-*/,
-        double elemSize );
+        double pipe_loss_per_m /*Wt/m*/, double pipe_length_add /*m*/, double pipe_length_mult /*-*/);
 
 	~C_cavity_receiver() {};
 
@@ -191,6 +203,8 @@ public:
 
     void zigzagRouting(size_t n_steps);
 
+    void zigzagRouting();
+
     void VFMatrix();
 
     void FHatMatrix(const util::matrix_t<double>& eps,
@@ -199,6 +213,13 @@ public:
 
     void matrixt_to_eigen(const util::matrix_t<double>& matrixt,
         Eigen::MatrixXd& eigenx);
+
+    void eigen_to_matrixt(const Eigen::MatrixXd& eigenx,
+        util::matrix_t<double>& matrixt);
+
+    Eigen::MatrixXd furthest(const Eigen::MatrixXd cents, const Eigen::MatrixXd aimpoint);
+
+    Eigen::MatrixXd nearest(const Eigen::MatrixXd cents, const Eigen::MatrixXd aimpoint);
 
     void hbarCorrelation(const Eigen::MatrixXd& T, double T_inf, Eigen::MatrixXd& h);
 

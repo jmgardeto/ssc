@@ -1607,15 +1607,12 @@ public:
             double e_act_therm = 0.85;      //[-] Emissivity in long wave range for active surfaces
             double e_pass_therm = 0.25;     //[-] Emissivity in long wave range for passive surfaces
 
-            double elemSize = 2.3;          //[-]
-
             std::unique_ptr<C_cavity_receiver> c_cav_rec = std::unique_ptr<C_cavity_receiver>(new C_cavity_receiver(as_double("dni_des"), hel_stow_deploy,
                 as_integer("rec_htf"), as_matrix("field_fl_props"),
                 od_rec_tube, th_rec_tube, as_integer("mat_tube"),
                 receiverHeight, receiverWidth, topLipHeight, botLipHeight,
                 e_act_sol, e_pass_sol, e_act_therm, e_pass_therm,
-                as_double("piping_loss"), as_double("piping_length_const"), as_double("piping_length_mult"),
-                elemSize));
+                as_double("piping_loss"), as_double("piping_length_const"), as_double("piping_length_mult")));
 
             receiver = std::move(c_cav_rec);
         }        
@@ -1735,7 +1732,7 @@ public:
 				receiver->m_clearsky_data.at(i) = (double)csky[i];
 		}
 
-        bool is_test_cavity = false;
+        bool is_test_cavity = true;
         // Test cavity. Downstream CSP Solver init() function will fail is this block of code runs.
         // Also need to set 'debugthis' to true in csp_solver_cavity_receiver
         if (rec_config_code == 1 && is_test_cavity) {
