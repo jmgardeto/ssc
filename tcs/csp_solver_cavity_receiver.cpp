@@ -542,6 +542,8 @@ void C_cavity_receiver::zigzagRouting()
     size_t panels_per_path = m_nPanels / m_nPaths;
     util::matrix_t<int> flow_route(m_nPaths, panels_per_path, 0);
 
+    // resize Fluid Connectivity Array
+    m_FCA.resize(m_nPaths);
 
     for (size_t j = 0; j < panels_per_path; j++){
         if (m_is_centerOutFlow) {
@@ -557,13 +559,36 @@ void C_cavity_receiver::zigzagRouting()
     for (size_t h = 0; h < m_nPaths; h++) {
 
         util::matrix_t<int> FCM(maxDim, maxDim, -1);
-        size_t count = 0;
+        size_t count = -1;
+
+        // For now, assume flow always in-to-out
+        Eigen::VectorXi E_zagOrder;
+        bool is_flow_out_to_in = false;
+        if (is_flow_out_to_in) {
+            E_zagOrder = Eigen::VectorXi::LinSpaced(m_pipeWindings, 0, m_pipeWindings - 1);
+        }
+        else {
+            E_zagOrder = Eigen::VectorXi::LinSpaced(m_pipeWindings, -(m_pipeWindings - 1), 0).cwiseAbs();
+        }
+
+        // For now, assume flow always top-to-bot
+        // (this implies always even number of pipeWindings)
+        bool is_flow_top_to_bot = false;
+        bool lastFlip = true;
+        if (is_flow_top_to_bot)
+            lastFlip = false;       // pipe inlet at top of receiver
+        else
+            lastFlip = true;        // pipe inlet at bottom of receiver
 
         for (size_t i_path = 0; i_path < flow_route.ncols(); i_path++) {
             size_t i = flow_route(h, i_path);
 
             util::matrix_t<int> elemIDs = m_surfIDs[i];
             size_t nElems = elemIDs.nrows();
+            Eigen::VectorXi E_elemIDs = Eigen::VectorXi::Constant(nElems, -1);
+            for (size_t j = 0; j < nElems; j++) {
+                E_elemIDs(j) = elemIDs(j, 0);
+            }
 
             util::matrix_t<double> cents(nElems, 3);
             util::matrix_t<double> cent_local;
@@ -577,6 +602,7 @@ void C_cavity_receiver::zigzagRouting()
             Eigen::MatrixXd E_cents;
             matrixt_to_eigen(cents, E_cents);
 
+            // translate elements to 2D domain in consistent coordinates
             Eigen::MatrixXd E_aimpoint(1, 3);
             E_aimpoint.row(0) << 10.0*0, 10.0*m_receiverHeight, 10.0*m_receiverHeight;
 
@@ -592,11 +618,161 @@ void C_cavity_receiver::zigzagRouting()
             V_panelXaxis << E_panelXaxis(0,0), E_panelXaxis(0,1), E_panelXaxis(0,2);
             Eigen::Vector3d V_panelYaxis(3);
             V_panelYaxis << E_panelYaxis(0, 0), E_panelYaxis(0, 1), E_panelYaxis(0, 2);
-            Eigen::MatrixXd E_panelNorm = V_panelXaxis.cross(V_panelYaxis);
+            Eigen::MatrixXd E_panelNorm = V_panelXaxis.cross(V_panelYaxis).transpose();
+
+            util::matrix_t<double> panelOrigin, panelNorm, panelXaxis;
+            eigen_to_matrixt(E_panelOrigin, panelOrigin);
+            eigen_to_matrixt(E_panelNorm, panelNorm);
+            eigen_to_matrixt(E_panelXaxis, panelXaxis);
+            util::matrix_t<double> cents_2D, poly_rt;
+            to2D(cents, panelOrigin, panelNorm, panelXaxis, cents_2D, poly_rt);
+
+            Eigen::MatrixXd E_cents_2D;
+            matrixt_to_eigen(cents_2D, E_cents_2D);
+
+            // determine step heights - works best if the number of relevant
+            //    elements is a multiple of nSteps
+            Eigen::VectorXd A_steps = Eigen::VectorXd::LinSpaced(m_pipeWindings,
+               E_cents_2D.col(0).minCoeff(), E_cents_2D.col(0).maxCoeff());
+
+            // sort elements by the step to which they are closest
+            //util::matrix_t<int> elemStep(nElems, 1, -1);
+            Eigen::VectorXi E_elemStep = Eigen::VectorXi::Constant(nElems, -1);
+            Eigen::VectorXd jdiff;
+            double k_v_min;
+            size_t k_min;
+            for (size_t j = 0; j < nElems; j++) {
+                jdiff = (-A_steps.array() + E_cents_2D(j,0)).abs();
+                k_v_min = 1.E6;
+                k_min = 0;
+                for (size_t k = 0; k < jdiff.size(); k++) {
+                    if (jdiff(k) < k_v_min) {
+                        k_v_min = jdiff(k);
+                        k_min = k;
+                    }
+                }
+                E_elemStep(j) = k_min;
+            }
+
+            // loop through each step
+            for (size_t j_index = 0; j_index < E_zagOrder.size(); j_index++) {
+                int j = E_zagOrder(j_index);
+
+
+                Eigen::VectorXi is_selected = (E_elemStep.array() == j).cast<int>();
+                Eigen::MatrixXd E_centsStep(is_selected.sum(), E_cents_2D.cols());
+                Eigen::VectorXi E_elemIDsStep(is_selected.sum());
+                int rownew = 0;
+                for (int ii = 0; ii < E_elemStep.rows(); ii++) {
+                    if (is_selected[ii]) {
+                        E_centsStep.row(rownew) = E_cents_2D.row(ii);
+                        E_elemIDsStep(rownew) = E_elemIDs(ii);
+                        rownew++;
+                    }
+                }
+
+                // Determine number of columns and their locations
+                std::vector<double> v_width(E_centsStep.rows());
+                for (size_t ii = 0; ii < E_centsStep.rows(); ii++) {
+                    v_width[ii] = E_centsStep(ii, 1);
+                }
+
+                std::vector<double>::iterator last = std::unique(v_width.begin(), v_width.end());
+                v_width.erase(last, v_width.end());
+                std::sort(v_width.begin(), v_width.end());
+                last = std::unique(v_width.begin(), v_width.end());
+                v_width.erase(last, v_width.end());
+
+                int columns = v_width.size();
+
+                if (lastFlip) {
+                    lastFlip = false;
+                }
+                else {
+                    std::reverse(v_width.begin(), v_width.end());
+
+                    lastFlip = true;
+                }
+
+                for (size_t k = 0; k < columns; k++) {
+
+                    Eigen::VectorXi E_test = (E_centsStep.col(1).array() <= v_width[k] + tol &&
+                                        E_centsStep.col(1).array() >= v_width[k] -tol).cast<int>();
+
+                    if (E_test.any()) {
+                        count++;
+
+
+                        Eigen::MatrixXi E_elemGroup(E_test.sum(),1);
+                        rownew = 0;
+                        for (int p = 0; p < E_test.rows(); p++) {
+                            if (E_test(p)) {
+                                E_elemGroup(rownew,0) = E_elemIDsStep(p);
+                            }
+                        }
+
+                        E_elemGroup.transpose();
+
+                        int elemGroupSize = E_elemGroup.rows();
+
+                        if (elemGroupSize > maxCol) {
+                            maxCol = elemGroupSize;
+                        }
+
+                        for (size_t j = 0; j < elemGroupSize; j++) {
+                            FCM(count, j) = E_elemGroup(0,j);
+                        }
+
+                    }
+                }
+            }
+
+            if (count > maxRow) {
+                maxRow = count;
+            }
 
         }
+
+        m_FCA[h] = FCM;
+
+        size_t j_col_nonzero = 0;
+        size_t n_rows = m_FCA[h].nrows();
+
+        for (size_t j = 1; j < m_FCA[h].ncols(); j++) {
+            bool is_non_zero = false;
+            for (size_t i = 0; i < n_rows; i++) {
+                if (m_FCA[h](i, j) > -1) {
+                    is_non_zero = true;
+                    j_col_nonzero = j;
+                    break;
+                }
+            }
+            if (!is_non_zero) {
+                break;
+            }
+        }
+
+        size_t i_row_nonzero = 0;
+        size_t n_cols = m_FCA[h].ncols();
+
+        for (size_t i = 1; i < n_rows; i++) {
+            bool is_non_zero = false;
+            for (size_t j = 0; j < n_cols; j++) {
+                if (m_FCA[h](i, j) > -1) {
+                    is_non_zero = true;
+                    i_row_nonzero = i;
+                    break;
+                }
+            }
+            if (!is_non_zero) {
+                break;
+            }
+        }
+
+        m_FCA[h].resize_preserve(i_row_nonzero + 1, j_col_nonzero + 1, -1);
     }
 
+    // trim padding zeros
 }
 
 Eigen::MatrixXd C_cavity_receiver::furthest(const Eigen::MatrixXd cents, const Eigen::MatrixXd aimpoint)
@@ -2394,11 +2570,11 @@ void C_cavity_receiver::init()
     // Assign global element solar and thermal emissivity
     surfValuesToElems();
 
-    //
+    // Define fluid connectivity array
     zigzagRouting();
 
     // Define fluid connectivity array
-    zigzagRouting(m_pipeWindings);
+    //zigzagRouting(m_pipeWindings);
 
     // Calculate view factors
     VFMatrix();
