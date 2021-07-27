@@ -52,7 +52,7 @@ public:
         bool is_flipRoute;
         double eps_sol;             //[-]
         double eps_therm;           //[-]
-        double surf_elem_size;      //[m (I think)]
+        double surf_elem_size;      //[m]
 
         C_rec_surface()
         {
@@ -123,6 +123,9 @@ private:
     util::matrix_t<double> m_areas;             // global element areas, each row indexed by m_surfIDs
     Eigen::MatrixXd mE_areas;                   // global element areas, each row indexed by m_surfIDs
     util::matrix_t<double> m_centroids;         // global element centroids, each row indexed by m_surfIDs
+    Eigen::MatrixXd mE_centroids;               // global element centroids, each row indexed by m_surfIDs
+    std::vector<int> m_global_to_surf_index;    // global element to surface index (in mv_rec_surf)
+
     size_t m_nElems;                            // global element centroids, each row indexed by m_surfIDs
     double m_area_active_total;                 // [m2] total surface area of all active elements
 
@@ -147,6 +150,7 @@ private:
     double m_A_cs_tube;                 //[m2]
     size_t m_Ntubes;                    //[-]
     double m_Q_dot_piping_loss;         //[Wt] = Constant thermal losses from piping to env. = (THT*length_mult + length_add) * piping_loss_coef
+    double m_rel_roughness;             //[-]
 
     // ************************************
     // Call variables
@@ -192,6 +196,9 @@ public:
 	virtual double get_pumping_parasitic_coef();
 
 	virtual double area_proj();
+
+    void tube_UA_and_deltaP(double m_dot_rec_total /*kg/s*/, const Eigen::MatrixXd E_T_HTF /*K*/,
+        Eigen::MatrixXd& UA, double& W_dot_pump /*MWe*/);
 
     void genOctCavity();
 

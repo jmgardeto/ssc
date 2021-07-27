@@ -1732,7 +1732,7 @@ public:
 				receiver->m_clearsky_data.at(i) = (double)csky[i];
 		}
 
-        bool is_test_cavity = true;
+        bool is_test_cavity = false;
         // Test cavity. Downstream CSP Solver init() function will fail is this block of code runs.
         // Also need to set 'debugthis' to true in csp_solver_cavity_receiver
         if (rec_config_code == 1 && is_test_cavity) {

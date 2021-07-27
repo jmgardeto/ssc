@@ -84,6 +84,7 @@ C_cavity_receiver::C_cavity_receiver(double dni_des /*W/m2*/, double hel_stow_de
     m_A_cs_tube = std::numeric_limits<double>::quiet_NaN();
     m_Ntubes = 0;
     m_Q_dot_piping_loss = std::numeric_limits<double>::quiet_NaN();
+    m_rel_roughness = std::numeric_limits<double>::quiet_NaN();
 }
 
 void C_cavity_receiver::genOctCavity()
@@ -477,15 +478,21 @@ void C_cavity_receiver::makeGlobalElems()
         }
     }
 
-    // Calculate total active area
+    // Calculate total active area and configure global surface index tracker
+    m_global_to_surf_index.resize(m_nElems);
     m_area_active_total = 0.0;      //[m2]
     for (size_t i_surf = 0; i_surf < n_surfs; i_surf++) {
         if (std::isfinite(mv_rec_surfs[i_surf].vertices(0, 0)) && mv_rec_surfs[i_surf].is_active_surf) {
             for (size_t i = 0; i < m_v_elems[i_surf].nrows(); i++) {
+                int i_global = m_surfIDs[i_surf](i, 0);
                 m_area_active_total += m_areas(m_surfIDs[i_surf](i, 0), 0);
+                m_global_to_surf_index[i_global] = i_surf;
             }
         }
     }
+
+    // Create Eigen version of centroids
+    matrixt_to_eigen(m_centroids, mE_centroids);
 
     return;
 }
@@ -2530,6 +2537,95 @@ void C_cavity_receiver::min_max_vects_from_columns(const util::matrix_t<double>&
 
 }
 
+void C_cavity_receiver::tube_UA_and_deltaP(double m_dot_rec_total /*kg/s*/, const Eigen::MatrixXd E_T_HTF /*K*/,
+    Eigen::MatrixXd & UA, double & W_dot_pump /*MWe*/)
+{
+    UA.resize(m_nElems, 1);
+    UA.setConstant(0.0);
+
+    double m_dot_path = m_dot_rec_total / (double)(m_nPaths);     //[kg/s]
+    double m_dot_tube = m_dot_path / (double)(m_Ntubes);    //[kg/s]
+
+    double W_dot_htf_dP = 0.0;    //[We]
+    // (using "path" here instead of "pipe" from Matlab code)
+    for (size_t i_path = 0; i_path < m_nPaths; i_path++) {
+
+        util::matrix_t<int> FCM = m_FCA[i_path];
+
+        size_t nSteps = FCM.nrows();
+
+        if (FCM.ncols() > 1) {
+            throw(C_csp_exception("Cavity code currently does not support parallel nodes within a fluid connectivity matrix",
+                "C_cavity_receiver"));
+        }
+
+        //double l_last = 0;
+        double lTotal = 0;
+
+        double dP_path = 0.0;
+
+        double T_in = E_T_HTF(FCM(0, 0),0);   //[K]
+        double T_out = E_T_HTF(FCM(nSteps-1,0),0);    //[K]
+        double rho_avg = field_htfProps.dens(0.5*(T_in + T_out),1.0);
+
+        for (size_t i = 0; i < nSteps; i++) {
+
+            size_t stepID = FCM(i,0);
+            Eigen::MatrixXd center = mE_centroids.row(stepID);
+
+            double T_htf = E_T_HTF(stepID,0);           //[K]
+
+            // Use HTF temperature to calculate tube conductivity
+            double ktube = tube_material.cond(T_htf); //[W/m-K]
+
+            double k = field_htfProps.cond(T_htf);          //[W/m-K]
+            double rho = field_htfProps.dens(T_htf, 1.0);   //[kg/m3]
+            double mu = field_htfProps.visc(T_htf);         //[kg/m-s]
+            double cp = field_htfProps.Cp(T_htf)*1.E3;      //[J/kg-K] convert from kJ/kg-K
+            double u = m_dot_tube/(rho*m_A_cs_tube);        //[m/s]
+            double Re = rho*u*m_d_in_rec_tube/mu;           //[-]
+            double Pr = cp*mu/k;                            //[-]
+
+            int i_panel = m_global_to_surf_index[stepID];
+            double i_elem_size = mv_rec_surfs[i_panel].surf_elem_size;  //[m]
+            double l = mE_areas(stepID,0) / i_elem_size;       //[m]
+
+            /*double l_next = 0.0;
+            if (i < nSteps - 1) {
+                Eigen::MatrixXd center_next = mE_centroids.row(FCM(i + 1, 0));
+                l_next = (center_next.array() - center.array()).matrix().norm();
+            }
+
+            double l = 0.5*(l_last + l_next);*/
+            lTotal += l;
+
+            // Determine convection coefficient
+            double Nu, f;
+            CSP::PipeFlow(Re, Pr, lTotal / m_d_in_rec_tube, m_rel_roughness, Nu, f);
+
+            double h = Nu * k / m_d_in_rec_tube;    //[W/m2-K]
+            double Rcond = log(m_od_rec_tube/m_d_in_rec_tube)/(CSP::pi*l*ktube*m_Ntubes);
+            double Rconv = 2.0/(h*m_Ntubes*l*m_d_in_rec_tube*CSP::pi);
+            UA(stepID,0) = 1.0/(Rcond + Rconv);     //[W/K]
+
+            //l_last = l_next;
+
+            if (i == nSteps - 1) {
+                dP_path = rho*f*lTotal*u*u/(2.0*m_d_in_rec_tube);   //[Pa]
+            }
+        }
+
+        W_dot_htf_dP += dP_path * m_dot_path / rho_avg; //[W]
+    }
+
+    double est_load = fmax(0.25, m_dot_rec_total / m_m_dot_htf_des) * 100;		//[%] Relative pump load. Limit to 25%
+    double eta_pump_adj = m_eta_pump * (-2.8825E-9 * pow(est_load, 4) + 6.0231E-7 * pow(est_load, 3) - 1.3867E-4 * pow(est_load, 2) + 2.0683E-2 * est_load);	//[-] Adjusted pump efficiency
+
+    W_dot_pump = W_dot_htf_dP / eta_pump_adj * 1.E-6;   //[MWe] convert from W and derate for pump efficiency
+
+    return;
+}
+
 void C_cavity_receiver::init()
 {
     // ******************************************
@@ -2551,8 +2647,7 @@ void C_cavity_receiver::init()
     m_is_centerOutFlow = true;
     m_nPaths = 2;
 
-    // This should be dependent on mesh geometry and tube sizes?
-    m_Ntubes = 30;
+    double surface_roughness = 4.5e-5;  //[m]
 
     // Create geometry(i.e.defines vertices) for a 4 - panel half - octagonal cavity receiver
     genOctCavity();
@@ -2563,6 +2658,11 @@ void C_cavity_receiver::init()
     // Tube geometry calcs
     m_d_in_rec_tube = m_od_rec_tube - 2.0 * m_th_rec_tube;      //[m]
     m_A_cs_tube = 0.25*CSP::pi*pow(m_d_in_rec_tube,2);          //[m2]
+    m_rel_roughness = surface_roughness / m_d_in_rec_tube;      //[-]
+
+    // choose number of HTF tubes per route based on available space
+    //    assumes each receiver panel is same area and uses same dimension tube
+    m_Ntubes = std::floor(mv_rec_surfs[0].surf_elem_size*m_modelRes/m_od_rec_tube);
 
     // Make global elements and calculate element centroids and areas
     makeGlobalElems();
@@ -2572,9 +2672,6 @@ void C_cavity_receiver::init()
 
     // Define fluid connectivity array
     zigzagRouting();
-
-    // Define fluid connectivity array
-    //zigzagRouting(m_pipeWindings);
 
     // Calculate view factors
     VFMatrix();
@@ -2705,7 +2802,7 @@ void C_cavity_receiver::call(const C_csp_weatherreader::S_outputs& weather,
     // Used to scale hard-coded flux map
     double field_eff_des = 0.6;     
 
-    bool debugthis = true;
+    bool debugthis = false;
     if (debugthis) {
         zenith = 0.0;
         azimuth = 0.0;
@@ -2787,38 +2884,47 @@ void C_cavity_receiver::call(const C_csp_weatherreader::S_outputs& weather,
 
         // *************************************************
         // *************************************************
-
-        // Assign conductance between HTF and each element
-        double UA_elemental = 4000;     //[W/K]
-        Eigen::MatrixXd E_U(m_nElems, 1);
-        E_U.setConstant(std::numeric_limits<double>::quiet_NaN());
-        for (size_t i_surf = 0; i_surf < mv_rec_surfs.size(); i_surf++) {
-            for (size_t i = 0; i < m_v_elems[i_surf].nrows(); i++) {
-                E_U(m_surfIDs[i_surf](i, 0), 0) = UA_elemental * (double)mv_rec_surfs[i_surf].is_active_surf / mE_areas(m_surfIDs[i_surf](i, 0), 0);
-            }
-        }
-
+        
         // Initialize elemental heat transfer fluid temperatures
-        Eigen::MatrixXd E_T_HTF = Eigen::MatrixXd::Zero(m_nElems, 1);
-        size_t nPipes = m_FCA.size();
+        Eigen::MatrixXd E_T_HTF = Eigen::MatrixXd::Zero(m_nElems, 1);       //[K]
 
-        for (size_t i_pipe = 0; i_pipe < nPipes; i_pipe++) {
+        // (using "path" here instead of "pipe" from Matlab code)
+        for (size_t i_path = 0; i_path < m_nPaths; i_path++) {
             util::matrix_t<int> FCM;
-            FCM = m_FCA[i_pipe];
+            FCM = m_FCA[i_path];
 
             size_t nSteps = FCM.nrows();
             std::vector<double> stepTemp(nSteps);
             double deltaT = (m_T_htf_hot_des - T_salt_cold_in) / (double)(nSteps - 1);
             for (size_t i = 0; i < nSteps; i++) {
-                stepTemp[i] = T_salt_cold_in + deltaT * i;
+                stepTemp[i] = T_salt_cold_in + deltaT * i;      //[K]
             }
 
             for (size_t i = 0; i < nSteps; i++) {
                 for (size_t j = 0; j < FCM.ncols(); j++) {
-                    E_T_HTF(FCM(i, j), 0) = stepTemp[i];
+                    E_T_HTF(FCM(i, j), 0) = stepTemp[i];        //[K]
                 }
             }
         }
+
+        // Guess mass flow rate based on design point thermal efficiency
+        double m_eta_therm_des = 0.88;
+        double q_dot_htf_est = q_dot_inc * m_eta_therm_des;
+        double m_dot_rec_total_guess = q_dot_htf_est / (cp_htf * (m_T_htf_hot_des - T_salt_cold_in));     //[kg/s]
+
+        // Conductivity and convective heat transfer network calculates UA, but energy balance equations divide it by area
+        Eigen::MatrixXd E_UA(m_nElems, 1);
+        tube_UA_and_deltaP(m_dot_rec_total_guess, E_T_HTF, E_UA, W_dot_pump);
+        Eigen::MatrixXd E_U = E_UA.array() / mE_areas.array();
+
+        // Assign conductance between HTF and each element
+        //double UA_elemental = 4000;     //[W/K]
+        //E_U.setConstant(std::numeric_limits<double>::quiet_NaN());
+        //for (size_t i_surf = 0; i_surf < mv_rec_surfs.size(); i_surf++) {
+        //    for (size_t i = 0; i < m_v_elems[i_surf].nrows(); i++) {
+        //        E_U(m_surfIDs[i_surf](i, 0), 0) = UA_elemental * (double)mv_rec_surfs[i_surf].is_active_surf / mE_areas(m_surfIDs[i_surf](i, 0), 0);
+        //    }
+        //}
 
         Eigen::MatrixXd EqIn = mE_areas.array() * EsolarFlux.array();
 
@@ -2955,7 +3061,7 @@ void C_cavity_receiver::call(const C_csp_weatherreader::S_outputs& weather,
             // solve for mass flow rate that achieves the target HTF outlet temperature
 
             q_gain_net_eb = E_Q_gain.sum();     //[W]
-            double m_dot = q_gain_net_eb / (nPipes * cp_htf * (m_T_htf_hot_des - T_salt_cold_in));     //[kg/s]
+            double m_dot = q_gain_net_eb / (m_nPaths * cp_htf * (m_T_htf_hot_des - T_salt_cold_in));     //[kg/s]
             std::vector<util::matrix_t<double>> mt_T;
 
             error_T_htf_out = tol_abs_T_htf_target * 10.0;
@@ -2968,9 +3074,9 @@ void C_cavity_receiver::call(const C_csp_weatherreader::S_outputs& weather,
 
                 mt_T.resize(m_FCA.size());
 
-                Eigen::MatrixXd E_T_out_pipe = Eigen::MatrixXd::Zero(1, nPipes);
+                Eigen::MatrixXd E_T_out_pipe = Eigen::MatrixXd::Zero(1, m_nPaths);
 
-                for (size_t k = 0; k < nPipes; k++) {
+                for (size_t k = 0; k < m_nPaths; k++) {
                     util::matrix_t<int> FCM = m_FCA[k];
 
                     // padding -1 (matlab uses 0) should have been removed in zigzag method
@@ -3007,19 +3113,19 @@ void C_cavity_receiver::call(const C_csp_weatherreader::S_outputs& weather,
 
                 // may want to add an option to calculate piping loss with a loss coefficient like external tower model
                 q_dot_piping_losses = m_Q_dot_piping_loss;      //[Wt]
-                double delta_T_piping = q_dot_piping_losses / (m_dot*nPipes*cp_htf);    //[K]
+                double delta_T_piping = q_dot_piping_losses / (m_dot*m_nPaths*cp_htf);    //[K]
 
                 T_htf_hot_calc = E_T_out_pipe.mean() - delta_T_piping;        //[K]
                 error_T_htf_out = T_htf_hot_calc - m_T_htf_hot_des;     //[K]
 
                 // adjust value of m_dot - usually not needed
-                double q_gain_total_calc = m_dot * cp_htf * nPipes * (T_htf_hot_calc - T_salt_cold_in);       //[W]
-                m_dot = q_gain_total_calc / (nPipes * cp_htf * (m_T_htf_hot_des - T_salt_cold_in));  //[kg/s]
+                double q_gain_total_calc = m_dot * cp_htf * m_nPaths * (T_htf_hot_calc - T_salt_cold_in);       //[W]
+                m_dot = q_gain_total_calc / (m_nPaths * cp_htf * (m_T_htf_hot_des - T_salt_cold_in));  //[kg/s]
             }
 
             Eigen::MatrixXd E_T_HTF_calc = Eigen::MatrixXd::Zero(m_nElems, 1);
             // assign fluid temperatures based on solution
-            for (size_t k = 0; k < nPipes; k++) {
+            for (size_t k = 0; k < m_nPaths; k++) {
                 util::matrix_t<int> FCM = m_FCA[k];
 
                 // padding -1 (matlab uses 0) should have been removed in zigzag method
@@ -3032,7 +3138,11 @@ void C_cavity_receiver::call(const C_csp_weatherreader::S_outputs& weather,
                 }
             }
 
-            m_dot_htf_tot = m_dot * nPipes;     //[kg/s]
+            m_dot_htf_tot = m_dot * m_nPaths;     //[kg/s]
+
+            // Update UA, pressure drop, and pump power calcs
+            tube_UA_and_deltaP(m_dot_rec_total_guess, E_T_HTF, E_UA, W_dot_pump);
+            E_U = E_UA.array() / mE_areas.array();
 
             // Calculate difference between nodal T_HTF and T_HTF_calc
             error_T_HTF_node_iter = 0.0;
@@ -3045,8 +3155,6 @@ void C_cavity_receiver::call(const C_csp_weatherreader::S_outputs& weather,
         // energy and fluid balance converged
 
         // Calculate converged receiver performance metrics
-        W_dot_pump = 1.234E6;   //[W]
-
         q_dot_thermal = m_dot_htf_tot * cp_htf * (T_htf_hot_calc - T_salt_cold_in);     //[W]
 
         // Check that important outputs are realistic
@@ -3163,7 +3271,7 @@ void C_cavity_receiver::call(const C_csp_weatherreader::S_outputs& weather,
         ms_outputs.m_Q_thermal_ss = std::numeric_limits<double>::quiet_NaN();
     }
 
-    ms_outputs.m_W_dot_pump = W_dot_pump / 1.E6;            //[MWe] convert from W
+    ms_outputs.m_W_dot_pump = W_dot_pump;                   //[MWe]
     ms_outputs.m_field_eff_adj = field_eff_adj;             //[-]
     ms_outputs.m_component_defocus = m_od_control;          //[-]
     ms_outputs.m_q_startup = q_startup / 1.E6;              //[MW-hr] convert from [W-hr]
