@@ -22,16 +22,16 @@ SSC incluye directamente el código fuente de otros tres proyectos de código ab
 - [splinter](https://github.com/bgrimstad/splinter) - codigo [aqui](https://github.com/NREL/ssc/tree/develop/splinter), [licencia MPL](https://github.com/bgrimstad/splinter/blob/master/LICENSE)
 
 
-To explore the code and understand the algorithms used in SSC, start by looking in the "SSC" project at the compute modules (files starting with cmod_) to find the compute module for the technology or financial model of interest.
+Para explorar el código y comprender los algoritmos utilizados en SSC, comience por buscar en el proyecto "SSC" los módulos de cómputo (archivos que comienzan con cmod_) para encontrar el módulo de cómputo para la tecnología o el modelo financiero de interés.
 
-# Contributing
+# Contribuyendo
 
-Please see the contribution guidelines in the main [SAM project readme](https://github.com/NREL/SAM/blob/develop/README.md).
+Consulte las pautas de contribución en el [README del proyecto SAM](https://github.com/NREL/SAM/blob/develop/README.md) principal.
 
-# License
+# Licencia
 
-SSC is licensed with BSD-3-Clause terms, found [here](https://github.com/NREL/SAM/blob/develop/LICENSE).
+SSC tiene licencia con los términos de la cláusula BSD-3, que se encuentran [aquí](https://github.com/NREL/SAM/blob/develop/LICENSE).
 
-# Citing this package
+# Citando este paquete
 
 System Advisor Model Version 2020.2.29 (2020.2.29). SSC source code. National Renewable Energy Laboratory. Golden, CO. Accessed May 27, 2020. https://github.com/NREL/ssc
