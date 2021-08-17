@@ -384,37 +384,36 @@ SUBGROUPING            = YES
 
 INLINE_GROUPED_CLASSES = NO
 
-# When the INLINE_SIMPLE_STRUCTS tag is set to YES, structs, classes, and unions
-# with only public data fields or simple typedef fields will be shown inline in
-# the documentation of the scope in which they are defined (i.e. file,
-# namespace, or group documentation), provided this scope is documented. If set
-# to NO, structs, classes, and unions are shown on a separate page (for HTML and
-# Man pages) or section (for LaTeX and RTF).
-# The default value is: NO.
+# Cuando la etiqueta INLINE_SIMPLE_STRUCTS se establece en YES, estructuras, clases y uniones
+# con solo campos de datos públicos o campos typedef simples se mostrarán en línea en
+# la documentación del alcance en el que se definen (es decir, archivo,
+# espacio de nombres, o documentación de grupo), siempre que este alcance esté documentado. Si está establecido
+# a NO, las estructuras, clases y uniones se muestran en una página separada (para HTML y
+# Man pages) o sección (para LaTeX y RTF).
+# El valor predeterminado es: NO.
 
 INLINE_SIMPLE_STRUCTS  = NO
 
-# When TYPEDEF_HIDES_STRUCT tag is enabled, a typedef of a struct, union, or
-# enum is documented as struct, union, or enum with the name of the typedef. So
-# typedef struct TypeS {} TypeT, will appear in the documentation as a struct
-# with name TypeT. When disabled the typedef will appear as a member of a file,
-# namespace, or class. And the struct will be named TypeS. This can typically be
-# useful for C code in case the coding convention dictates that all compound
-# types are typedef'ed and only the typedef is referenced, never the tag name.
-# The default value is: NO.
+# Cuando la etiqueta TYPEDEF_HIDES_STRUCT está habilitada, un typedef de una estructura, unión o
+# enum se documenta como struct, union o enum con el nombre del typedef. Entonces
+# typedef struct TypeS {} TypeT, aparecerá en la documentación como una estructura
+# con el nombre TypeT. Cuando está deshabilitado, typedef aparecer como miembro de un archivo,
+# espacio de nombres o clase. Y la estructura se llamará TypeS. Esto normalmente puede ser
+# útil para el código C en caso de que la convención de codificación dicta que todos los compuestos
+# tipos son typedef'ed y solo se hace referencia al typedef, nunca al nombre de la etiqueta.
+# El valor predeterminado es: NO.
 
 TYPEDEF_HIDES_STRUCT   = NO
-
-# The size of the symbol lookup cache can be set using LOOKUP_CACHE_SIZE. This
-# cache is used to resolve symbols given their name and scope. Since this can be
-# an expensive process and often the same symbol appears multiple times in the
-# code, doxygen keeps a cache of pre-resolved symbols. If the cache is too small
-# doxygen will become slower. If the cache is too large, memory is wasted. The
-# cache size is given by this formula: 2^(16+LOOKUP_CACHE_SIZE). The valid range
-# is 0..9, the default is 0, corresponding to a cache size of 2^16=65536
-# symbols. At the end of a run doxygen will report the cache usage and suggest
-# the optimal cache size from a speed point of view.
-# Minimum value: 0, maximum value: 9, default value: 0.
+# El tamaño de la caché de búsqueda de símbolos se puede establecer usando LOOKUP_CACHE_SIZE. Esta
+# caché se usa para resolver símbolos dado su nombre y alcance. Dado que esto puede ser
+# un proceso costoso y, a menudo, el mismo símbolo aparece varias veces en el
+# codigo, doxygen mantiene un caché de símbolos resueltos previamente. Si el caché es demasiado pequeño
+# doxygen se volverá más lento. Si la caché es demasiado grande, se desperdicia memoria. El
+# el tamaño de la caché viene dado por esta fórmula: 2^(16+LOOKUP_CACHE_SIZE). El rango válido
+# es 0..9, el valor predeterminado es 0, correspondiente a un tamaño de caché de 2^16=65536
+# símbolos. Al final de una ejecución, doxygen informará el uso de la caché y sugerirá
+# el tamaño de caché óptimo desde el punto de vista de la velocidad.
+# Valor mínimo: 0, valor máximo: 9, valor predeterminado: 0.
 
 LOOKUP_CACHE_SIZE      = 0
 
