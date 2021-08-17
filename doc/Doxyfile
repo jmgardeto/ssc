@@ -32,33 +32,33 @@ DOXYFILE_ENCODING      = UTF-8
 # título de la mayoría de las páginas generadas y en algunos otros lugares.
 # El valor predeterminado es: My project.
 
-PROJECT_NAME      = "SAM Simulation Core (SSC)"
+PROJECT_NAME           = "SAM Simulation Core (SSC)"
 
 # La etiqueta PROJECT_NUMBER se puede usar para ingresar un número de proyecto o revisión. Esta
 # podría ser útil para archivar la documentación generada o si alguna versión
 # utiliza el sistema de control.
 
-PROJECT_NUMBER      =
+PROJECT_NUMBER         =
 
 # Usando la etiqueta PROJECT_BRIEF se puede proporcionar una descripción opcional de una línea
 # para un proyecto que aparece en la parte superior de cada página y debe dar al espectador una
 # idea rápida sobre el propósito del proyecto. Mantenga breve la descripción.
 
-PROJECT_BRIEF      =
+PROJECT_BRIEF          =
 
 # Con la etiqueta PROJECT_LOGO se puede especificar un logotipo o un icono que se incluye
 # en la documentación. La altura máxima del logo no debe exceder los 55
 # píxeles y el ancho máximo no debe exceder los 200 píxeles. Doxygen copiará
 # el logo en el directorio de salida.
 
-PROJECT_LOGO      =
+PROJECT_LOGO           =
 
 # La etiqueta OUTPUT_DIRECTORY se usa para especificar la ruta (relativa o absoluta)
 # en el que se escribirá la documentación generada. Si se ingresa una ruta relativa,
 # será relativo a la ubicación donde se inició doxygen. Si se deja en blanco se utilizará el
 # directorio actual.
 
-OUTPUT_DIRECTORY      = .
+OUTPUT_DIRECTORY       = .
 
 # Si la etiqueta CREATE_SUBDIRS se establece en YES, entonces doxygen creará 4096 sub-
 # directorios (en 2 niveles) bajo el directorio de salida de cada formato de salida y
@@ -68,7 +68,7 @@ OUTPUT_DIRECTORY      = .
 # problemas de rendimiento del sistema de archivos.
 # El valor predeterminado es: NO.
 
-CREATE_SUBDIRS      = NO
+CREATE_SUBDIRS         = NO
 
 # Si la etiqueta ALLOW_UNICODE_NAMES se establece en YES, doxygen permitirá no-ASCII
 # caracteres en los nombres de los archivos generados. Si se establece en NO, los no-ASCII
@@ -76,7 +76,7 @@ CREATE_SUBDIRS      = NO
 # U + 3044.
 # El valor predeterminado es: NO.
 
-ALLOW_UNICODE_NAMES =      NO
+ALLOW_UNICODE_NAMES    = NO
 
 # La etiqueta OUTPUT_LANGUAGE se usa para especificar el idioma en el que se 
 # escribe toda la documentación generada por doxygen. Doxygen usará esta
@@ -91,14 +91,14 @@ ALLOW_UNICODE_NAMES =      NO
 # ucraniano y vietnamita.
 # El valor predeterminado es: English.
 
-OUTPUT_LANGUAGE      = English
+OUTPUT_LANGUAGE       = English
 
 # Si la etiqueta BRIEF_MEMBER_DESC se establece en YES, doxygen incluirá una breve descripcion
 # de miembro después de los miembros que se enumeran en el archivo y la documentación
 # de clase (similar a Javadoc). Ajústelo a NO para deshabilitarlo.
 # El valor predeterminado es: YES.
 
-BRIEF_MEMBER_DESC =      YES
+BRIEF_MEMBER_DESC     = YES
 
 # Si la etiqueta REPEAT_BRIEF se establece en YES, doxygen antepondrá la descripción
 # resumen de un miembro o función antes de la descripción detallada
@@ -107,7 +107,7 @@ BRIEF_MEMBER_DESC =      YES
 # Se suprimirán por completo las descripciones breves.
 # El valor predeterminado es: YES.
 
-REPEAT_BRIEF =      YES
+REPEAT_BRIEF          = YES
 
 # Esta etiqueta implementa un abreviador de descripción breve cuasi inteligente que es
 # utilizado para formar el texto en varios listados. Cada cadena de esta lista, si se encuentra
@@ -118,16 +118,16 @@ REPEAT_BRIEF =      YES
 # la entidad): la clase $name, el widget $name, el archivo $name,  is, provides
 # specifies, contains, represents, a, an y the .
 
-ABBREVIATE_BRIEF       = "The $name class" \
-                                                 "The $name widget" \
-                         "The $name file" \
-                         is \
-                         provides \
-                         specifies \
-                         contains \
-                         represents \
-                         a \
-                         an \
+ABBREVIATE_BRIEF       = "The $name class"\
+                         "The $name widget"\
+                         "The $name file"\
+                         is\
+                         provides\
+                         specifies\
+                         contains\
+                         represents\
+                         a\
+                         an\
                          the
 
 # Si las etiquetas ALWAYS_DETAILED_SEC y REPEAT_BRIEF están configuradas en YES, entonces
@@ -135,7 +135,7 @@ ABBREVIATE_BRIEF       = "The $name class" \
 # descripción.
 # El valor predeterminado es no.
 
-ALWAYS_DETAILED_SEC =      NO
+ALWAYS_DETAILED_SEC    = NO
 
 # Si la etiqueta INLINE_INHERITED_MEMB se establece en YES, doxygen mostrará todos los
 # miembros heredados de una clase en la documentación de esa clase como si esos
@@ -143,14 +143,14 @@ ALWAYS_DETAILED_SEC =      NO
 3 de asignacion de las clases base no se mostrarán.
 # El valor predeterminado es: NO.
 
-INLINE_INHERITED_MEMB =      NO
+INLINE_INHERITED_MEMB  = NO
 
 # Si la etiqueta FULL_PATH_NAMES se establece en YES, doxygen antepondrá la ruta completa
 # antes del nombre de los archivos en la lista de archivos y en los archivos de encabezado. Si se establece en NO,
 # se utilizará la ruta más corta que hace que el nombre del archivo sea único
 # El valor predeterminado es: YES.
 
-FULL_PATH_NAMES =      NO
+FULL_PATH_NAMES        = NO
 
 # La etiqueta STRIP_FROM_PATH se puede utilizar para eliminar una parte de la ruta definida por el usuario.
 # La eliminación solo se realiza si una de las cadenas especificadas coincide con la de la parte izquierda
