@@ -1,5 +1,5 @@
 <a name="toc"></a>
-- [Parameters](#parameters)
+- [Parametros](#parameters)
   * [calc_design_pipe_vals](#calc_design_pipe_vals)
   * [custom_sf_pipe_sizes](#custom_sf_pipe_sizes)
   * [custom_sgs_pipe_sizes](#custom_sgs_pipe_sizes)
@@ -61,21 +61,21 @@
  
 <!-- toc -->
 
-## Parameters
+## Parametros
 ### calc_design_pipe_vals
-true if the htf temperatures and pressures at design conditions in the runners, farthest header, and farthest loop should be calculated and output. Default = true. [^](#toc)
+true si las temperaturas y presiones htf en condiciones de diseño en los canales, el cabezal más lejano y el bucle más lejano deben calcularse y emitirse. Predeterminado = true. [^](#toc)
 
 ### custom_sf_pipe_sizes
-true if the runner and header diameters, wall thicknesses and lengths parameters should be used instead of calculating them. Note that changing the lengths does not affect the field layout. [^](#toc)
+true si deben usarse los parámetros de diámetros de canal y cabezal, espesores de pared y longitudes en lugar de calcularlos. Tenga en cuenta que cambiar las longitudes no afecta el diseño del campo. [^](#toc)
 
 ### custom_sgs_pipe_sizes
-true if the SGS diameters and wall thicknesses parameters should be used instead of calculating them. (Note that the SGS lengths are always input). [^](#toc)
+true si los parámetros de diámetros y espesores de pared de SGS deben usarse en lugar de calcularlos. (Tenga en cuenta que las longitudes de SGS siempre son entradas). [^](#toc)
 
 ### custom_tes_p_loss
-true if the TES piping losses should be calculated using the TES pipe lengths and minor loss coefficients (k_tes_loss_coeffs) or false if using the pumping power parameters on the parasitics page. Default = false. [^](#toc)
+true si las pérdidas de la tubería TES deben calcularse utilizando las longitudes de las tuberías TES y los coeficientes de pérdida menor (k_tes_loss_coeffs) o false si se utilizan los parámetros de potencia de bombeo en la página de parásitos. Predeterminado = false. [^](#toc)
 
 ### DP_SGS
-the pressure drop in bar within the steam generator system (SGS) Default = 0. [^](#toc)
+la caída de presión en bar dentro del sistema generador de vapor (SGS) Predeterminado = 0. [^](#toc)
 
 ### has_hot_tank_bypass
 true if the solar field bypass valve causes the field htf to bypasses just the hot tank (and power block and auxiliary boiler) and enter the cold tank before flowing back to the field. Value is false if the bypass valve bypasses both the hot and cold tank. Default = false. [^](#toc)
