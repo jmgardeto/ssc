@@ -1,125 +1,125 @@
 # Doxyfile 1.8.14
 
-# This file describes the settings to be used by the documentation system
-# doxygen (www.doxygen.org) for a project.
+# Este archivo describe la configuración que utilizará el sistema de documentación
+# doxygen (www.doxygen.org) para un proyecto.
 #
-# All text after a double hash (##) is considered a comment and is placed in
-# front of the TAG it is preceding.
+# Todo el texto después de un doble hash (##) se considera un comentario y se coloca
+# delante de la ETIQUETA que precede.
 #
-# All text after a single hash (#) is considered a comment and will be ignored.
-# The format is:
-# TAG = value [value, ...]
-# For lists, items can also be appended using:
-# TAG += value [value, ...]
-# Values that contain spaces should be placed between quotes (\" \").
+# Todo el texto después de un solo hash (#) se considera un comentario y se ignorará.
+# El formato es:
+# TAG = valor [valor, ...]
+# Para las listas, los elementos también se pueden agregar usando:
+# TAG += valor [valor, ...]
+# Los valores que contienen espacios deben colocarse entre comillas (\" \").
 
-#---------------------------------------------------------------------------
-# Project related configuration options
-#---------------------------------------------------------------------------
+# ------------------------------------------------- --------------------------
+# Opciones de configuración relacionadas con el proyecto
+# ------------------------------------------------- --------------------------
 
-# This tag specifies the encoding used for all characters in the config file
-# that follow. The default is UTF-8 which is also the encoding used for all text
-# before the first occurrence of this tag. Doxygen uses libiconv (or the iconv
-# built into libc) for the transcoding. See
-# https://www.gnu.org/software/libiconv/ for the list of possible encodings.
-# The default value is: UTF-8.
+# Esta etiqueta especifica la codificación utilizada para todos los caracteres en el archivo de configuración
+# que siguen. El valor predeterminado es UTF-8, que también es la codificación utilizada para todo el texto.
+# antes de la primera aparición de esta etiqueta. Doxygen usa libiconv (o iconv
+# integrado en libc) para la transcodificación. Ver
+# https://www.gnu.org/software/libiconv/ para ver la lista de posibles codificaciones.
+# El valor predeterminado es: UTF-8.
 
 DOXYFILE_ENCODING      = UTF-8
 
-# The PROJECT_NAME tag is a single word (or a sequence of words surrounded by
-# double-quotes, unless you are using Doxywizard) that should identify the
-# project for which the documentation is generated. This name is used in the
-# title of most generated pages and in a few other places.
-# The default value is: My Project.
+# La etiqueta PROJECT_NAME es una sola palabra (o una secuencia de palabras rodeadas por
+# comillas dobles, a menos que esté usando Doxywizard) que deberían identificar el
+# proyecto para el que se genera la documentación. Este nombre se usa en el
+# título de la mayoría de las páginas generadas y en algunos otros lugares.
+# El valor predeterminado es: My project.
 
-PROJECT_NAME           = "SAM Simulation Core (SSC)"
+PROJECT_NAME      = "SAM Simulation Core (SSC)"
 
-# The PROJECT_NUMBER tag can be used to enter a project or revision number. This
-# could be handy for archiving the generated documentation or if some version
-# control system is used.
+# La etiqueta PROJECT_NUMBER se puede usar para ingresar un número de proyecto o revisión. Esta
+# podría ser útil para archivar la documentación generada o si alguna versión
+# utiliza el sistema de control.
 
-PROJECT_NUMBER         = 
+PROJECT_NUMBER      =
 
-# Using the PROJECT_BRIEF tag one can provide an optional one line description
-# for a project that appears at the top of each page and should give viewer a
-# quick idea about the purpose of the project. Keep the description short.
+# Usando la etiqueta PROJECT_BRIEF se puede proporcionar una descripción opcional de una línea
+# para un proyecto que aparece en la parte superior de cada página y debe dar al espectador una
+# idea rápida sobre el propósito del proyecto. Mantenga breve la descripción.
 
-PROJECT_BRIEF          = 
+PROJECT_BRIEF      =
 
-# With the PROJECT_LOGO tag one can specify a logo or an icon that is included
-# in the documentation. The maximum height of the logo should not exceed 55
-# pixels and the maximum width should not exceed 200 pixels. Doxygen will copy
-# the logo to the output directory.
+# Con la etiqueta PROJECT_LOGO se puede especificar un logotipo o un icono que se incluye
+# en la documentación. La altura máxima del logo no debe exceder los 55
+# píxeles y el ancho máximo no debe exceder los 200 píxeles. Doxygen copiará
+# el logo en el directorio de salida.
 
-PROJECT_LOGO           = 
+PROJECT_LOGO      =
 
-# The OUTPUT_DIRECTORY tag is used to specify the (relative or absolute) path
-# into which the generated documentation will be written. If a relative path is
-# entered, it will be relative to the location where doxygen was started. If
-# left blank the current directory will be used.
+# La etiqueta OUTPUT_DIRECTORY se usa para especificar la ruta (relativa o absoluta)
+# en el que se escribirá la documentación generada. Si se ingresa una ruta relativa,
+# será relativo a la ubicación donde se inició doxygen. Si se deja en blanco se utilizará el
+# directorio actual.
 
-OUTPUT_DIRECTORY       = .
+OUTPUT_DIRECTORY      = .
 
-# If the CREATE_SUBDIRS tag is set to YES then doxygen will create 4096 sub-
-# directories (in 2 levels) under the output directory of each output format and
-# will distribute the generated files over these directories. Enabling this
-# option can be useful when feeding doxygen a huge amount of source files, where
-# putting all generated files in the same directory would otherwise causes
-# performance problems for the file system.
-# The default value is: NO.
+# Si la etiqueta CREATE_SUBDIRS se establece en YES, entonces doxygen creará 4096 sub-
+# directorios (en 2 niveles) bajo el directorio de salida de cada formato de salida y
+# distribuirá los archivos generados en estos directorios. Habilitar esta
+# opción puede ser útil cuando se alimenta a doxygen una gran cantidad de archivos fuente, donde
+# poner todos los archivos generados en el mismo directorio causaría
+# problemas de rendimiento del sistema de archivos.
+# El valor predeterminado es: NO.
 
-CREATE_SUBDIRS         = NO
+CREATE_SUBDIRS      = NO
 
-# If the ALLOW_UNICODE_NAMES tag is set to YES, doxygen will allow non-ASCII
-# characters to appear in the names of generated files. If set to NO, non-ASCII
-# characters will be escaped, for example _xE3_x81_x84 will be used for Unicode
-# U+3044.
-# The default value is: NO.
+# Si la etiqueta ALLOW_UNICODE_NAMES se establece en YES, doxygen permitirá no-ASCII
+# caracteres en los nombres de los archivos generados. Si se establece en NO, los no-ASCII
+# caracteres se escaparán, por ejemplo, _xE3_x81_x84 se usará para Unicode
+# U + 3044.
+# El valor predeterminado es: NO.
 
-ALLOW_UNICODE_NAMES    = NO
+ALLOW_UNICODE_NAMES =      NO
 
-# The OUTPUT_LANGUAGE tag is used to specify the language in which all
-# documentation generated by doxygen is written. Doxygen will use this
-# information to generate all constant output in the proper language.
-# Possible values are: Afrikaans, Arabic, Armenian, Brazilian, Catalan, Chinese,
-# Chinese-Traditional, Croatian, Czech, Danish, Dutch, English (United States),
-# Esperanto, Farsi (Persian), Finnish, French, German, Greek, Hungarian,
-# Indonesian, Italian, Japanese, Japanese-en (Japanese with English messages),
-# Korean, Korean-en (Korean with English messages), Latvian, Lithuanian,
-# Macedonian, Norwegian, Persian (Farsi), Polish, Portuguese, Romanian, Russian,
-# Serbian, Serbian-Cyrillic, Slovak, Slovene, Spanish, Swedish, Turkish,
-# Ukrainian and Vietnamese.
-# The default value is: English.
+# La etiqueta OUTPUT_LANGUAGE se usa para especificar el idioma en el que se 
+# escribe toda la documentación generada por doxygen. Doxygen usará esta
+# información para generar toda la salida constante en el idioma adecuado.
+# Los valores posibles son: afrikáans, árabe, armenio, brasileño, catalán, chino,
+# chino tradicional, croata, checo, danés, holandés, inglés (Estados Unidos),
+# esperanto, farsi (persa), finlandés, francés, alemán, griego, húngaro,
+# indonesio, italiano, japonés, japonés-en (japonés con mensajes en inglés),
+# coreano, Korean-en (coreano con mensajes en inglés), letón, lituano,
+# macedonio, noruego, persa (farsi), polaco, portugués, rumano, ruso,
+# serbio, serbio-cirílico, eslovaco, esloveno, español, sueco, turco,
+# ucraniano y vietnamita.
+# El valor predeterminado es: English.
 
-OUTPUT_LANGUAGE        = English
+OUTPUT_LANGUAGE      = English
 
-# If the BRIEF_MEMBER_DESC tag is set to YES, doxygen will include brief member
-# descriptions after the members that are listed in the file and class
-# documentation (similar to Javadoc). Set to NO to disable this.
-# The default value is: YES.
+# Si la etiqueta BRIEF_MEMBER_DESC se establece en YES, doxygen incluirá una breve descripcion
+# de miembro después de los miembros que se enumeran en el archivo y la documentación
+# de clase (similar a Javadoc). Ajústelo a NO para deshabilitarlo.
+# El valor predeterminado es: YES.
 
-BRIEF_MEMBER_DESC      = YES
+BRIEF_MEMBER_DESC =      YES
 
-# If the REPEAT_BRIEF tag is set to YES, doxygen will prepend the brief
-# description of a member or function before the detailed description
+# Si la etiqueta REPEAT_BRIEF se establece en YES, doxygen antepondrá la descripción
+# resumen de un miembro o función antes de la descripción detallada
 #
-# Note: If both HIDE_UNDOC_MEMBERS and BRIEF_MEMBER_DESC are set to NO, the
-# brief descriptions will be completely suppressed.
-# The default value is: YES.
+# Nota: Si tanto HIDE_UNDOC_MEMBERS como BRIEF_MEMBER_DESC se establecen en NO, 
+# Se suprimirán por completo las descripciones breves.
+# El valor predeterminado es: YES.
 
-REPEAT_BRIEF           = YES
+REPEAT_BRIEF =      YES
 
-# This tag implements a quasi-intelligent brief description abbreviator that is
-# used to form the text in various listings. Each string in this list, if found
-# as the leading text of the brief description, will be stripped from the text
-# and the result, after processing the whole list, is used as the annotated
-# text. Otherwise, the brief description is used as-is. If left blank, the
-# following values are used ($name is automatically replaced with the name of
-# the entity):The $name class, The $name widget, The $name file, is, provides,
-# specifies, contains, represents, a, an and the.
+# Esta etiqueta implementa un abreviador de descripción breve cuasi inteligente que es
+# utilizado para formar el texto en varios listados. Cada cadena de esta lista, si se encuentra
+# como texto inicial de la descripción breve, se eliminará del texto
+# y el resultado, después de procesar toda la lista, se utiliza como el texto anotado.
+# De lo contrario, la descripción breve se utiliza tal cual. Si se deja en blanco,
+# se utilizan los siguientes valores ($name se reemplaza automáticamente con el nombre de
+# la entidad): la clase $name, el widget $name, el archivo $name,  is, provides
+# specifies, contains, represents, a, an y the .
 
 ABBREVIATE_BRIEF       = "The $name class" \
-                         "The $name widget" \
+                                                 "The $name widget" \
                          "The $name file" \
                          is \
                          provides \
@@ -130,37 +130,36 @@ ABBREVIATE_BRIEF       = "The $name class" \
                          an \
                          the
 
-# If the ALWAYS_DETAILED_SEC and REPEAT_BRIEF tags are both set to YES then
-# doxygen will generate a detailed section even if there is only a brief
-# description.
-# The default value is: NO.
+# Si las etiquetas ALWAYS_DETAILED_SEC y REPEAT_BRIEF están configuradas en YES, entonces
+# doxygen generará una sección detallada incluso si solo hay una breve
+# descripción.
+# El valor predeterminado es no.
 
-ALWAYS_DETAILED_SEC    = NO
+ALWAYS_DETAILED_SEC =      NO
 
-# If the INLINE_INHERITED_MEMB tag is set to YES, doxygen will show all
-# inherited members of a class in the documentation of that class as if those
-# members were ordinary class members. Constructors, destructors and assignment
-# operators of the base classes will not be shown.
-# The default value is: NO.
+# Si la etiqueta INLINE_INHERITED_MEMB se establece en YES, doxygen mostrará todos los
+# miembros heredados de una clase en la documentación de esa clase como si esos
+# miembros fuesen miembros ordinarios de la clase. Constructores, destructores y operadores
+3 de asignacion de las clases base no se mostrarán.
+# El valor predeterminado es: NO.
 
-INLINE_INHERITED_MEMB  = NO
+INLINE_INHERITED_MEMB =      NO
 
-# If the FULL_PATH_NAMES tag is set to YES, doxygen will prepend the full path
-# before files name in the file list and in the header files. If set to NO the
-# shortest path that makes the file name unique will be used
-# The default value is: YES.
+# Si la etiqueta FULL_PATH_NAMES se establece en YES, doxygen antepondrá la ruta completa
+# antes del nombre de los archivos en la lista de archivos y en los archivos de encabezado. Si se establece en NO,
+# se utilizará la ruta más corta que hace que el nombre del archivo sea único
+# El valor predeterminado es: YES.
 
-FULL_PATH_NAMES        = NO
+FULL_PATH_NAMES =      NO
 
-# The STRIP_FROM_PATH tag can be used to strip a user-defined part of the path.
-# Stripping is only done if one of the specified strings matches the left-hand
-# part of the path. The tag can be used to show relative paths in the file list.
-# If left blank the directory from which doxygen is run is used as the path to
-# strip.
+# La etiqueta STRIP_FROM_PATH se puede utilizar para eliminar una parte de la ruta definida por el usuario.
+# La eliminación solo se realiza si una de las cadenas especificadas coincide con la de la parte izquierda
+# del camino. La etiqueta se puede utilizar para mostrar rutas relativas en la lista de archivos.
+# Si se deja en blanco, el directorio desde el que se ejecuta doxygen se utiliza como ruta a descartar.
 #
-# Note that you can specify absolute paths here, but also relative paths, which
-# will be relative from the directory where doxygen is started.
-# This tag requires that the tag FULL_PATH_NAMES is set to YES.
+# Tenga en cuenta que aquí puede especificar rutas absolutas, pero también rutas relativas, que
+# serán relativas al directorio donde se inicia doxygen.
+# Esta etiqueta requiere que la etiqueta FULL_PATH_NAMES esté establecida en YES.
 
 STRIP_FROM_PATH        = 
 
