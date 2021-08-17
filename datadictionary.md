@@ -111,81 +111,81 @@ separación norte / sur entre subcampos, en metros, definida como la distancia m
 ubicación del primer bucle de expansión del cabezal. Predeterminado = 1, lo que significa que el primer bucle de expansión está después del primer bucle colector más cercano al tramo. [^](#toc)
 
 ### sf_hdr_diams
-custom inner diameters for the header piping as read from the modified output files. Utilized if custom_sf_pipe_sizes is true. Do not change the number of values (sections) as this will result in unpredictable model behavior. [^](#toc)
+diámetros internos personalizados para la tubería del cabezal según se lee en los archivos de salida modificados. Se utiliza si custom_sf_pipe_sizes es true. No cambie el número de valores (secciones) ya que esto resultará en un comportamiento impredecible del modelo.  [^](#toc)
  
 ### sf_hdr_lengths
-custom lengths for the header piping as read from the modified output files. Utilized if custom_sf_pipe_sizes is true. Changing the lengths does not affect the field layout. Do not change the number of values (sections) as this will result in unpredictable model behavior. [^](#toc)
+longitudes personalizadas para la tubería del cabezal según se leen de los archivos de salida modificados. Se utiliza si custom_sf_pipe_sizes es verdadero. Cambiar las longitudes no afecta el diseño del campo. No cambie el número de valores (secciones) ya que esto resultará en un comportamiento impredecible del modelo. [^](#toc)
  
 ### sf_hdr_wallthicks
-custom wall thicknesses for the header piping as read from the modified output files. Utilized if custom_sf_pipe_sizes is true. Do not change the number of values (sections) as this will result in unpredictable model behavior. [^](#toc)
+espesores de pared personalizados para la tubería del cabezal como se lee en los archivos de salida modificados. Se utiliza si custom_sf_pipe_sizes es verdadero. No cambie el número de valores (secciones) ya que esto resultará en un comportamiento impredecible del modelo. [^](#toc)
  
 ### sf_rnr_diams
-custom inner diameters for the runner piping as read from the modified output files. Utilized if custom_sf_pipe_sizes is true. Do not change the number of values (sections) as this will result in unpredictable model behavior. [^](#toc)
+Diámetros internos personalizados para la tubería del tramo como se lee en los archivos de salida modificados. Se utiliza si custom_sf_pipe_sizes es verdadero. No cambie el número de valores (secciones) ya que esto resultará en un comportamiento impredecible del modelo. [^](#toc)
  
 ### sf_rnr_lengths
-custom lengths for the runner piping as read from the modified output files. Utilized if custom_sf_pipe_sizes is true. Changing the lengths does not affect the field layout. Do not change the number of values (sections) as this will result in unpredictable model behavior. [^](#toc)
+longitudes personalizadas para tramo de tubería como se leen de los archivos de salida modificados. Se utiliza si custom_sf_pipe_sizes es verdadero. Cambiar las longitudes no afecta el diseño del campo. No cambie el número de valores (secciones) ya que esto resultará en un comportamiento impredecible del modelo. [^](#toc)
  
 ### sf_rnr_wallthicks
-custom wall thicknesses for the runner piping as read from the modified output files. Utilized if custom_sf_pipe_sizes is true. Do not change the number of values (sections) as this will result in unpredictable model behavior. [^](#toc)
+espesores de pared personalizados para tramo de tubería como se lee en los archivos de salida modificados. Se utiliza si custom_sf_pipe_sizes es verdadero. No cambie el número de valores (secciones) ya que esto resultará en un comportamiento impredecible del modelo. [^](#toc)
  
 ### sgs_diams
-custom inner diameters for the SGS piping as read from the modified output files. Utilized if custom_sgs_pipe_sizes is true. Do not change the number of values (sections) as this will result in unpredictable model behavior. [^](#toc)
+Diámetros internos personalizados para la tubería SGS como se lee en los archivos de salida modificados. Se utiliza si custom_sgs_pipe_sizes es verdadero. No cambie el número de valores (secciones) ya que esto resultará en un comportamiento impredecible del modelo. [^](#toc)
 
-Collection Sections:
-- 0: &nbsp;&nbsp;&nbsp; Solar field (SF) pump suction header to individual SF pump inlet
-- 1: &nbsp;&nbsp;&nbsp; Individual SF pump discharge to SF pump discharge header
-- 2: &nbsp;&nbsp;&nbsp; SF pump discharge header to collection field section headers (i.e., runners)
-- 3: &nbsp;&nbsp;&nbsp; Collector field section outlet headers (i.e., runners) to expansion vessel (indirect storage) or hot thermal storage tank (direct storage)
-- 4: &nbsp;&nbsp;&nbsp; Bypass branch - Collector field section outlet headers (i.e., runners) to pump suction header (indirect) or cold thermal storage tank (direct)
+Secciones Collection:
+- 0: &nbsp;&nbsp;&nbsp; Cabezal de succión de la bomba de campo solar (SF) a la entrada de la bomba SF individual
+- 1: &nbsp;&nbsp;&nbsp; Descarga de bomba SF individual al cabezal de descarga de la bomba SF
+- 2: &nbsp;&nbsp;&nbsp; Cabezal de descarga de la bomba SF a los cabezales de la sección del campo de recolección (es decir, canales)
+- 3: &nbsp;&nbsp;&nbsp; Cabezales de salida de la sección del campo del colector (es decir, canales) al vaso de expansión (almacenamiento indirecto) o al tanque de almacenamiento térmico caliente (almacenamiento directo)
+- 4: &nbsp;&nbsp;&nbsp; Bypass branch - Ramal de derivación: cabezales de salida de la sección del campo del colector (es decir, canales) al cabezal de succión de la bomba (indirecto) o al tanque de almacenamiento térmico frío (directo)
 
-Generation Sections:
-- 5: &nbsp;&nbsp;&nbsp; SGS pump suction header to individual SGS pump inlet (applicable only for storage in series with SF)
-- 6: &nbsp;&nbsp;&nbsp; Individual SGS pump discharge to SGS pump discharge header (only for series storage)
-- 7: &nbsp;&nbsp;&nbsp; SGS pump discharge header to steam generator supply header (only for series storage)
-- 8: &nbsp;&nbsp;&nbsp; Steam generator supply header to inter-steam generator piping
-- 9: &nbsp;&nbsp;&nbsp; Inter-steam generator piping to steam generator outlet header
-- 10: &nbsp;&nbsp;&nbsp; Steam generator outlet header to SF pump suction header (indirect) or cold thermal storage tank (direct)
+Secciones Generation:
+- 5: &nbsp;&nbsp;&nbsp; Cabezal de succión de bomba SGS a entrada de bomba SGS individual (aplicable solo para almacenamiento en serie con SF)
+- 6: &nbsp;&nbsp;&nbsp; Descarga de bomba SGS individual al cabezal de descarga de bomba SGS (solo para almacenamiento en serie)
+- 7: &nbsp;&nbsp;&nbsp; Cabezal de descarga de la bomba SGS al cabezal de suministro del generador de vapor (solo para almacenamiento en serie)
+- 8: &nbsp;&nbsp;&nbsp; Cabezal de suministro del generador de vapor a la tubería entre generadores de vapor
+- 9: &nbsp;&nbsp;&nbsp; Tubería entre generadores de vapor al cabezal de salida del generador de vapor
+- 10: &nbsp;&nbsp;&nbsp; Cabezal de salida del generador de vapor al cabezal de succión de la bomba SF (indirecto) o al tanque de almacenamiento térmico frío (directo)
 
 ### sgs_lengths
-length of piping in the SGS collection flow loop followed by the generation flow loop [m]. These are not read from the modified output files. Defaults = {0, 90, 100, 120, 0, 0, 0, 0, 80, 120, 80}. Lengths at indices 0, 1, 5 and 6 are the summed lengths of the multiple individual pump sections. Do not change the number of values (sections) as this will result in unpredictable model behavior. [^](#toc)
+longitud de la tubería en el circuito de flujo de recolección SGS seguida por el circuito de flujo de generación [m]. Estos no se leen de los archivos de salida modificados. Valores predeterminados = {0, 90, 100, 120, 0, 0, 0, 0, 80, 120, 80}. Las longitudes en los índices 0, 1, 5 y 6 son las longitudes sumadas de las múltiples secciones individuales de la bomba. No cambie el número de valores (secciones) ya que esto resultará en un comportamiento impredecible del modelo. [^](#toc)
 
 ### sgs_wallthicks
-custom wall thicknesses for the SGS piping as read from the modified output files. Utilized if custom_sgs_pipe_sizes is true. Do not change the number of values (sections) as this will result in unpredictable model behavior. [^](#toc)
+espesores de pared personalizados para la tubería SGS como se lee en los archivos de salida modificados. Se utiliza si custom_sgs_pipe_sizes es verdadero. No cambie el número de valores (secciones) ya que esto resultará en un comportamiento impredecible del modelo. [^](#toc)
 
 ### tanks_in_parallel
-true if the hot and cold storage tank branch is in parallel with the solar field (traditional case), or false if the tanks are in series with the solar field (only applicable for direct storage). Default = true. [^](#toc)
+true si el ramal del tanque de almacenamiento frío y caliente está en paralelo con el campo solar (caso tradicional), o false si los tanques están en serie con el campo solar (solo aplicable para almacenamiento directo). Predeterminado = true. [^](#toc)
 
 ### T_tank_hot_inlet_min
-the minimum field htf temperature that may enter the hot tank [C]. If below this temperature the bypass valve is opened and the field recirculates. Default = 400 C. [^](#toc)
+la temperatura mínima de campo htf que puede entrar en el tanque caliente [C]. Por debajo de esta temperatura se abre la válvula de derivación y el campo recircula. Predeterminado = 400 C. [^](#toc)
 				
 ### V_hdr_cold_max
-maximum allowed velocity in the cold header at design conditions. This value can be exceeded if the minimum would also be exceeded, but only if this puts it less out of range. [^](#toc)
+velocidad máxima permitida en el cabezal frío en condiciones de diseño. Este valor puede excederse si también se excede el mínimo, pero solo si esto lo pone menos fuera de rango. [^](#toc)
 
 ### V_hdr_cold_min
-minimum allowed velocity in the cold header at design conditions. This value can be exceeded if the maximum would also be exceeded, but only if this puts it less out of range. [^](#toc)
+velocidad mínima permitida en el cabezal frío en condiciones de diseño. Este valor puede excederse si también se excede el máximo, pero solo si esto lo pone menos fuera de rango. [^](#toc)
 
 ### V_hdr_hot_max
-maximum allowed velocity in the hot header at design conditions. This value can be exceeded if the minimum would also be exceeded, but only if this puts it less out of range. [^](#toc)
+velocidad máxima permitida en el cabezal caliente en condiciones de diseño. Este valor puede excederse si también se excede el mínimo, pero solo si esto lo pone menos fuera de rango. [^](#toc)
 
 ### V_hdr_hot_min
-minimum allowed velocity in the hot header at design conditions. This value can be exceeded if the maximum would also be exceeded, but only if this puts it less out of range. [^](#toc)
+velocidad mínima permitida en el cabezal caliente en condiciones de diseño. Este valor puede excederse si también se excede el máximo, pero solo si esto lo pone menos fuera de rango. [^](#toc)
 
 ### V_tes_des
-design-point velocity for sizing the diameters of the TES piping [m/s]. Default = 1.85 m/s. [^](#toc)
+velocidad del punto de diseño para dimensionar los diámetros de la tubería TES [m/s]. Predeterminado = 1.85 m/s. [^](#toc)
 
 
-## Outputs
+## Salidas
 ### pipe_header_diams
-inner diameters in meters of all of the header sections in the cold and hot headers in one subfield. The first diameter is that before the first set of loops in the cold header and the last diameter is that after the last set of loops in the hot header. [^](#toc)
+diámetros internos en metros de todas las secciones del cabezal en los cabezales fríos y calientes en un subcampo. El primer diámetro es el que está antes del primer conjunto de bucles en el cabezal frío y el último diámetro es el que sigue al último juego de bucles en el cabezal caliente. [^](#toc)
 
 ### pipe_header_expansions
-number of expansions or contractions in the given header section [^](#toc)
+número de expansiones o contracciones en la sección de cabezal dada [^](#toc)
 
 ### pipe_header_lengths
-lengths in meters of the all of the header sections, including the added lengths of any expansion loops. The first length is that before the first set of loops in the cold header and last length is that after the last set of loops in the hot header. [^](#toc)
+longitudes en metros de todas las secciones del cabezal, incluidas las longitudes agregadas de cualquier bucle de expansión. La primera longitud es la que está antes del primer conjunto de bucles en el encabezado en frío y la última longitud es la que sigue al último conjunto de bucles en el encabezado en caliente.  [^](#toc)
 
 ### pipe_header_mdot_dsn
-mass flow rate in kg/s of the heat transfer fluid in each header section at design conditions. The first value is in the section before the first set of loops in the cold header and the last value is in the section after the last set of loops in the hot header. The mass flow for the cold header sections is the same as that entering the section, and the mass flow for the hot header sections is the same as that leaving the section. [^](#toc)
+caudal másico en kg/s del fluido caloportador en cada sección del colector en las condiciones de diseño. El primer valor está en la sección antes del primer conjunto de bucles en el cabezal frío y el último valor está en la sección después del último conjunto de bucles en el cabezal caliente. El caudal másico de las secciones de colector frío es el mismo que el que entra en la sección, y el caudal másico de las secciones de colector caliente es el mismo que el que sale de la sección. [^](#toc)
 
 ### pipe_header_P_dsn
 gauge pressure in bar of the heat transfer fluid entering each section of the farthest header at design conditions. The first value is for the section before the first set of loops in the cold header and the last value is for the section after the last set of loops in the hot header. [^](#toc)
