@@ -78,37 +78,37 @@ true si las pérdidas de la tubería TES deben calcularse utilizando las longitu
 la caída de presión en bar dentro del sistema generador de vapor (SGS) Predeterminado = 0. [^](#toc)
 
 ### has_hot_tank_bypass
-true if the solar field bypass valve causes the field htf to bypasses just the hot tank (and power block and auxiliary boiler) and enter the cold tank before flowing back to the field. Value is false if the bypass valve bypasses both the hot and cold tank. Default = false. [^](#toc)
+true si la válvula de derivación del campo solar hace que el campo htf evite solo el tanque caliente (y el bloque de alimentación y la caldera auxiliar) y entre en el tanque frío antes de regresar al campo. El valor es false si la válvula de derivación pasa por alto tanto el tanque frío como el caliente. Predeterminado = false. [^](#toc)
 
 ### k_tes_loss_coeffs
-the combined minor loss coefficients of the fittings and valves in the collection (including bypass) and generation loops in the TES piping to be used in the equation DP = K * U^2 * rho / 2. Defaults = {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0} [^](#toc)
+coeficientes de pérdida menor combinados de los accesorios y válvulas en la colección (incluida la derivación) y los bucles de generación en la tubería TES que se utilizarán en la ecuación DP = K * U^2 * rho / 2. Predeterminado = {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0} [^](#toc)
 
 ### L_rnr_pb
-length of runner pipe in meters, for either the hot or cold lines. This length was previously shared with the other identical set of runners for the other half of the solar field, but this is no longer the case. Default = 25 m. [^](#toc)
+longitud de tramo de tubería en metros, ya sea para las líneas frías o calientes. Esta longitud se compartió anteriormente con el otro conjunto idéntico de tramos  para la otra mitad del campo solar, pero este ya no es el caso. Por defecto = 25 m. [^](#toc)
 
 ### L_rnr_per_xpan
-the threshold length of straight runner pipe without an expansion loop. Once this length has been reached, an expansion loop is added (without increasing the linear distance). Default = 70 m. [^](#toc)
+longitud umbral de tramo de tubería recto sin bucle de expansión. Una vez que se ha alcanzado esta longitud, se agrega un bucle de expansión (sin aumentar la distancia lineal). Por defecto = 70 m. [^](#toc)
 
 ### L_xpan_hdr
-combined length in meters of the two perpendicular segments of a header expansion loop. This is the additional pipe length for each expansion loop. Default = 20 m [^](#toc)
+longitud combinada en metros de los dos segmentos perpendiculares de un bucle de expansión del cabezal. Esta es la longitud de tubería adicional para cada bucle de expansión. Predeterminado = 20 m [^](#toc)
 
 ### L_xpan_rnr
-combined length in meters of the two perpendicular segments of a runner expansion loop. This is the additional pipe length for each expansion loop. Default = 20 m [^](#toc)
+longitud combinada en metros de los dos segmentos perpendiculares de un bucle de expansión de tramo. Esta es la longitud de tubería adicional para cada bucle de expansión. Predeterminado = 20 m [^](#toc)
 
 ### Min_rnr_xpans
-minimum number of expansion loops per single-diameter runner section. Default = 1 [^](#toc)
+número mínimo de bucles de expansión por sección de tramo de un solo diámetro. Predeterminado = 1 [^](#toc)
 
 ### N_hdr_per_xpan
-number of collector loops per header expansion loops. Default = 2. Value = 1 means that there are expansion loops between every collector loop. [^](#toc)
+número de bucles de colector por bucles de expansión de cabecera. Predeterminado = 2. Valor = 1 significa que hay bucles de expansión entre cada bucle de colector. [^](#toc)
 
 ### N_max_hdr_diams
-maximum number of allowed diameters in each of the hot and cold headers. The maximum number of diameters in both the hot and cold headers is 2*N_max_hdr_diams. Default = 10. [^](#toc)
+número máximo de diámetros permitidos en cada uno de los cabezales fríos y calientes. El número máximo de diámetros en los cabezales fríos y calientes es 2*N_max_hdr_diams. Predeterminado = 10. [^](#toc)
 
 ### northsouth_field_sep
-north/south separation between subfields, in meters, defined as the shortest distance in-between SCAs in the different fields. Default = 20 m. Value = 0 means SCAs are touching. [^](#toc)
+separación norte / sur entre subcampos, en metros, definida como la distancia más corta entre SCA en los diferentes campos. Por defecto = 20 m. Valor = 0 significa que los SCA se están tocando. [^](#toc)
 
 ### offset_xpan_hdr
-location of the first header expansion loop. Default = 1, which means that the first expansion loop is after the first collector loop closest to the runner. [^](#toc)
+ubicación del primer bucle de expansión del cabezal. Predeterminado = 1, lo que significa que el primer bucle de expansión está después del primer bucle colector más cercano al tramo. [^](#toc)
 
 ### sf_hdr_diams
 custom inner diameters for the header piping as read from the modified output files. Utilized if custom_sf_pipe_sizes is true. Do not change the number of values (sections) as this will result in unpredictable model behavior. [^](#toc)
