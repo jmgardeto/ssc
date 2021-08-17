@@ -1,6 +1,6 @@
-# Contributing to SSC
-The SAM team welcomes your contribution to the project! 
+# Contribuir con SSC
+¡El equipo de SAM agradece su contribución al proyecto!
 
-You can contribute to SSC by letting us know about problems or suggesting new features, or by making your own changes or additions to the code. You may want to report or help us fix an [issue someone else reported](https://github.com/NREL/SSC/issues), fix an issue you discovered, or add a new feature to SAM. If you have a question about using SAM, you can ask us on the [SAM support forum](https://sam.nrel.gov/support).
+Puede contribuir a SSC informándonos sobre problemas o sugiriendo nuevas funciones, o haciendo sus propios cambios o adiciones al código. Es posible que desee informarnos o ayudarnos a solucionar un [problema informado por otra persona](https://github.com/NREL/SSC/issues), solucionar un problema que descubrió o agregar una nueva función a SAM. Si tiene alguna pregunta sobre el uso de SAM, puede consultarnos en el [foro de soporte de SAM](https://sam.nrel.gov/support).
 
-Please see our wiki page for our contribution policy: [https://github.com/NREL/SAM/wiki/Contribution-Policy](https://github.com/NREL/SAM/wiki/Contribution-Policy).
+Consulte nuestra página wiki para conocer nuestra política de contribución: [https://github.com/NREL/SAM/wiki/Contribution-Policy](https://github.com/NREL/SAM/wiki/Contribution-Policy).
