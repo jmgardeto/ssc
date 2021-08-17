@@ -1,28 +1,28 @@
-# Instructions for Maintaining SSC Documentation
+# Instrucciones para mantener la documentación de SSC
 
-This document explains how to use Doxygen, and LaTeX to create the SSC API documentation.
+Este documento explica cómo usar Doxygen y LaTeX para crear la documentación de la API SSC.
 
-## Overview
-
-
-Generating the SSC documentation involves a number of steps, some of which are automated, and some of which are automatic:
-
-* The SSC documentation consists of the 8 chapters in the ssc_guide.tex file.
-
-* The content for Chapters 1-7 is in ssc_guide.tex. It was originally drafted by Aron Dobos and revised by Paul Gilman.
-
-* Doxygen generates content for Chapter 8 (the file reference for sscapi.h} in sscapi_8h.tex from comments in sscapi.h.
-
-* An include command in the ssc_guide.tex file inserts the content of sscapi_8h.tex into ssc_guide.tex.
-
-* The settings in the Doxygen configuration file Doxyfile determine what is included in the function reference
+## Visión general
 
 
-Overall Steps for Maintaining Documentation
--------------------------------------------
+La generación de la documentación de SSC implica una serie de pasos, algunos de los cuales están automatizados y otros son automáticos de por si:
 
-1. As needed, revise content in doc/ssc_guide.tex and the Doxygen-formatted comments in ssc/sscapi.h.
+* La documentación de SSC consta de 8 capítulos en el archivo ssc_guide.tex.
 
-2. Run ``doxygen`` on Doxyconfig to generate the latex folder with sscapi_8h.tex and other files
+* El contenido de los Capítulos 1-7 está en ssc_guide.tex. Fue redactado originalmente por Aron Dobos y revisado por Paul Gilman.
 
-3. Run ``pdflatex`` on ssc_guide.tex to generate a PDF file -- run it twice to generate the table of contents, cross references, etc.
+* Doxygen genera contenido para el Capítulo 8 (la referencia del archivo para sscapi.h} en sscapi_8h.tex a partir de comentarios en sscapi.h.
+
+* Un comando include en el archivo ssc_guide.tex inserta el contenido de sscapi_8h.tex en ssc_guide.tex.
+
+* Los ajustes en el archivo de configuración de Doxygen Doxyfile determinan lo que se incluye en la referencia de funciones
+
+
+Pasos generales para mantenimiento de la documentación
+----------------------------------------------------------
+
+1. Según sea necesario, revise el contenido en doc/ssc_guide.tex y los comentarios con formato Doxygen en ssc/sscapi.h.
+
+2. Ejecute ``doxygen`` en Doxyconfig para generar la carpeta de látex con sscapi_8h.tex y otros archivos
+
+3. Ejecute ``pdflatex`` en ssc_guide.tex para generar un archivo PDF; ejecútelo dos veces para generar la tabla de contenido, referencias cruzadas, etc.
