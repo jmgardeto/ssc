@@ -34,4 +34,4 @@ SSC tiene licencia con los términos de la cláusula BSD-3, que se encuentran [a
 
 # Citando este paquete
 
-System Advisor Model Version 2020.2.29 (2020.2.29). SSC source code. National Renewable Energy Laboratory. Golden, CO. Accessed May 27, 2020. https://github.com/NREL/ssc
+System Advisor Model Version 2020.2.29 (2020.2.29). SSC source code. National Renewable Energy Laboratory. Golden, CO. Accessed May 27, 2020. https://github.com/NREL/ssc 
