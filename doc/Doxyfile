@@ -163,85 +163,84 @@ FULL_PATH_NAMES        = NO
 
 STRIP_FROM_PATH        = 
 
-# The STRIP_FROM_INC_PATH tag can be used to strip a user-defined part of the
-# path mentioned in the documentation of a class, which tells the reader which
-# header file to include in order to use a class. If left blank only the name of
-# the header file containing the class definition is used. Otherwise one should
-# specify the list of include paths that are normally passed to the compiler
-# using the -I flag.
+# La etiqueta STRIP_FROM_INC_PATH se puede utilizar para quitar una parte definida por el usuario de la
+# ruta mencionada en la documentación de una clase, que le dice al lector qué
+# archivo de encabezado incluir para usar una clase. Si se deja en blanco solo 
+# se utiliza el nombre del archivo de encabezado que contiene la definición de clase. 
+# De lo contrario, debería especificar la lista de rutas de inclusión que normalmente se pasan al compilador
+# usando la bandera -I.
 
 STRIP_FROM_INC_PATH    = 
 
-# If the SHORT_NAMES tag is set to YES, doxygen will generate much shorter (but
-# less readable) file names. This can be useful is your file systems doesn't
-# support long names like on DOS, Mac, or CD-ROM.
-# The default value is: NO.
+# Si la etiqueta SHORT_NAMES se establece en YES, doxygen generará nombres de archivo
+# mucho más cortos (pero menos legibles). Esto puede ser útil si sus sistemas de archivos no
+# admite nombres largos como en DOS, Mac o CD-ROM.
+# El valor predeterminado es: NO.
 
 SHORT_NAMES            = NO
 
-# If the JAVADOC_AUTOBRIEF tag is set to YES then doxygen will interpret the
-# first line (until the first dot) of a Javadoc-style comment as the brief
-# description. If set to NO, the Javadoc-style will behave just like regular Qt-
-# style comments (thus requiring an explicit @brief command for a brief
-# description.)
-# The default value is: NO.
+# Si la etiqueta JAVADOC_AUTOBRIEF se establece en YES, entonces doxygen interpretará la
+# primera línea (hasta el primer punto) de un comentario estilo Javadoc como resumen de
+# descripción. Si se establece en NO, el estilo Javadoc se comportará como comentarios de estilo 
+# Qt (por lo que requieren un comando @brief explícito para una descripción breve.)
+# El valor predeterminado es: NO.
 
 JAVADOC_AUTOBRIEF      = YES
 
-# If the QT_AUTOBRIEF tag is set to YES then doxygen will interpret the first
-# line (until the first dot) of a Qt-style comment as the brief description. If
-# set to NO, the Qt-style will behave just like regular Qt-style comments (thus
-# requiring an explicit \brief command for a brief description.)
-# The default value is: NO.
+# Si la etiqueta QT_AUTOBRIEF se establece en YES, entonces doxygen interpretará la primera
+# línea (hasta el primer punto) de un comentario estilo Qt como descripción breve. Si se
+# establece en NO, el estilo Qt se comportará como los comentarios regulares del estilo Qt (por lo tanto
+# requiriendo un comando explícito \brief para una breve descripción.)
+# El valor predeterminado es: NO.
 
 QT_AUTOBRIEF           = NO
 
-# The MULTILINE_CPP_IS_BRIEF tag can be set to YES to make doxygen treat a
-# multi-line C++ special comment block (i.e. a block of //! or /// comments) as
-# a brief description. This used to be the default behavior. The new default is
-# to treat a multi-line C++ comment block as a detailed description. Set this
-# tag to YES if you prefer the old behavior instead.
+# La etiqueta MULTILINE_CPP_IS_BRIEF se puede establecer en YES para que el tratamiento con doxygen sea un
+# bloque de comentarios especiales de C++ de varias líneas (es decir, un bloque de comentarios //! o ///) como
+# una breve descripción. Este solía ser el comportamiento predeterminado. El nuevo valor predeterminado es
+# tratar un bloque de comentarios de C++ de varias líneas como una descripción detallada. Establecer esta
+# etiqueta en YES si prefiere el comportamiento anterior.
 #
-# Note that setting this tag to YES also means that rational rose comments are
-# not recognized any more.
-# The default value is: NO.
+# Tenga en cuenta que establecer esta etiqueta en YES también significa que los comentarios rational rose
+# ya no se reconoce.
+# El valor predeterminado es: NO.
 
 MULTILINE_CPP_IS_BRIEF = NO
 
-# If the INHERIT_DOCS tag is set to YES then an undocumented member inherits the
-# documentation from any documented member that it re-implements.
-# The default value is: YES.
+# Si la etiqueta INHERIT_DOCS se establece en YES, entonces un miembro indocumentado hereda la
+# documentación de cualquier miembro documentado que reimplemente.
+# El valor predeterminado es: YES.
 
 INHERIT_DOCS           = YES
 
-# If the SEPARATE_MEMBER_PAGES tag is set to YES then doxygen will produce a new
-# page for each member. If set to NO, the documentation of a member will be part
-# of the file/class/namespace that contains it.
-# The default value is: NO.
+# Si la etiqueta SEPARATE_MEMBER_PAGES se establece en YES, entonces doxygen producirá una nueva
+# página para cada miembro. Si se establece en NO, la documentación de un miembro será parte
+# del file/class/namespace que lo contiene.
+# El valor predeterminado es: NO.
 
 SEPARATE_MEMBER_PAGES  = NO
 
-# The TAB_SIZE tag can be used to set the number of spaces in a tab. Doxygen
-# uses this value to replace tabs by spaces in code fragments.
-# Minimum value: 1, maximum value: 16, default value: 4.
+# La etiqueta TAB_SIZE se puede utilizar para establecer el número de espacios en una pestaña. Doxygen
+# usa este valor para reemplazar tabulaciones por espacios en fragmentos de código.
+# Valor mínimo: 1, valor máximo: 16, valor predeterminado: 4.
 
 TAB_SIZE               = 4
 
-# This tag can be used to specify a number of aliases that act as commands in
-# the documentation. An alias has the form:
-# name=value
-# For example adding
+# Esta etiqueta se puede utilizar para especificar una serie de alias que actúan como comandos en
+# la documentación. Un alias tiene la forma:
+# nombre=valor
+# Por ejemplo, agregando
 # "sideeffect=@par Side Effects:\n"
-# will allow you to put the command \sideeffect (or @sideeffect) in the
-# documentation, which will result in a user-defined paragraph with heading
-# "Side Effects:". You can put \n's in the value part of an alias to insert
-# newlines.
+# le permitirá poner el comando \sideeffect (o @sideeffect) en la
+# documentación, que dará como resultado un párrafo definido por el usuario con encabezado
+# "Side Effects:". Puede poner \n's en la parte del valor de un alias para insertar
+# nuevas líneas.
 
 ALIASES                = 
 
-# This tag can be used to specify a number of word-keyword mappings (TCL only).
-# A mapping has the form "name=value". For example adding "class=itcl::class"
-# will allow you to use the command class in the itcl::class meaning.
+# Esta etiqueta se puede utilizar para especificar una serie de asignaciones palabra-palabra clave (mapeo, solo TCL).
+# Un mapeo tiene la forma "nombre=valor". Por ejemplo, agregando "class=itcl::class"
+# le permite usar la clase de comando en el significado de itcl::class.
 
 TCL_SUBST              = 
 
