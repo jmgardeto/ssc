@@ -244,101 +244,100 @@ ALIASES                =
 
 TCL_SUBST              = 
 
-# Set the OPTIMIZE_OUTPUT_FOR_C tag to YES if your project consists of C sources
-# only. Doxygen will then generate output that is more tailored for C. For
-# instance, some of the names that are used will be different. The list of all
-# members will be omitted, etc.
-# The default value is: NO.
+# Establezca la etiqueta OPTIMIZE_OUTPUT_FOR_C en YES si su proyecto consta de fuentes C
+# solamente. Doxygen generará una salida más adaptada a C.
+# Por ejemplo, algunos de los nombres que se utilizan serán diferentes. La lista de todos
+# los miembros se omitirá, etc.
+# El valor predeterminado es NO.
 
 OPTIMIZE_OUTPUT_FOR_C  = NO
 
-# Set the OPTIMIZE_OUTPUT_JAVA tag to YES if your project consists of Java or
-# Python sources only. Doxygen will then generate output that is more tailored
-# for that language. For instance, namespaces will be presented as packages,
-# qualified scopes will look different, etc.
-# The default value is: NO.
+# Establezca la etiqueta OPTIMIZE_OUTPUT_JAVA en YES si su proyecto consta solo de fuentes
+# Java o Python. Doxygen generará una salida más personalizada
+# para esos idiomas. Por ejemplo, los espacios de nombres se presentarán como paquetes,
+# los alcances calificados se verán diferentes, etc.
+# El valor predeterminado es: NO.
 
 OPTIMIZE_OUTPUT_JAVA   = NO
 
-# Set the OPTIMIZE_FOR_FORTRAN tag to YES if your project consists of Fortran
-# sources. Doxygen will then generate output that is tailored for Fortran.
-# The default value is: NO.
+# Establezca la etiqueta OPTIMIZE_FOR_FORTRAN en YES si su proyecto consta de fuentes Fortran.
+# A continuación, Doxygen generará una salida adaptada a Fortran.
+# El valor predeterminado es: NO.
 
 OPTIMIZE_FOR_FORTRAN   = NO
 
-# Set the OPTIMIZE_OUTPUT_VHDL tag to YES if your project consists of VHDL
-# sources. Doxygen will then generate output that is tailored for VHDL.
-# The default value is: NO.
+# Establezca la etiqueta OPTIMIZE_OUTPUT_VHDL en YES si su proyecto consta de fuentes VHDL.
+# A continuación, Doxygen generará una salida adaptada a VHDL.
+# El valor predeterminado es: NO.
 
 OPTIMIZE_OUTPUT_VHDL   = NO
 
-# Doxygen selects the parser to use depending on the extension of the files it
-# parses. With this tag you can assign which parser to use for a given
-# extension. Doxygen has a built-in mapping, but you can override or extend it
-# using this tag. The format is ext=language, where ext is a file extension, and
-# language is one of the parsers supported by doxygen: IDL, Java, Javascript,
-# C#, C, C++, D, PHP, Objective-C, Python, Fortran (fixed format Fortran:
-# FortranFixed, free formatted Fortran: FortranFree, unknown formatted Fortran:
-# Fortran. In the later case the parser tries to guess whether the code is fixed
-# or free formatted code, this is the default for Fortran type files), VHDL. For
-# instance to make doxygen treat .inc files as Fortran files (default is PHP),
-# and .f files as C (default is Fortran), use: inc=Fortran f=C.
+# Doxygen selecciona el analizador que se utilizará en función de la extensión de los archivos
+# analizados. Con esta etiqueta puede asignar qué analizador utilizar para una determinada
+# extensión. Doxygen tiene un mapeo incorporado, pero puede anularlo o extenderlo
+# usando esta etiqueta. El formato es ext=lenguaje, donde ext es una extensión de archivo y
+# language es uno de los analizadores compatibles con doxygen: IDL, Java, Javascript,
+# C#, C, C++, D, PHP, Objective-C, Python, Fortran (formato fijo Fortran:
+# FortranFIxed, formato libre Fortran: FortranFree, Fortran con formato desconocido:
+# Fortran. En el último caso, el analizador intenta adivinar si el código es fijo
+# o formateado libre, este es el predeterminado para archivos de tipo Fortran), VHDL. 
+# Por ejemplo, para hacer que doxygen trate los archivos .inc como archivos Fortran (el predeterminado es PHP),
+# y los archivos .f como C (el predeterminado es Fortran), use: inc=Fortran f=C.
 #
-# Note: For files without extension you can use no_extension as a placeholder.
+# Nota: Para archivos sin extensión, puede usar no_extension como marcador de posición.
 #
-# Note that for custom extensions you also need to set FILE_PATTERNS otherwise
-# the files are not read by doxygen.
+# Tenga en cuenta que para las extensiones personalizadas también debe configurar FILE_PATTERNS, de lo contrario
+# Doxygen no lee los archivos.
 
 EXTENSION_MAPPING      = 
 
-# If the MARKDOWN_SUPPORT tag is enabled then doxygen pre-processes all comments
-# according to the Markdown format, which allows for more readable
-# documentation. See http://daringfireball.net/projects/markdown/ for details.
-# The output of markdown processing is further processed by doxygen, so you can
-# mix doxygen, HTML, and XML commands with Markdown formatting. Disable only in
-# case of backward compatibilities issues.
-# The default value is: YES.
+# Si la etiqueta MARKDOWN_SUPPORT está habilitada, entonces doxygen preprocesa todos los comentarios
+# de acuerdo con el formato Markdown, que permite una mayor legibilidad de la
+# documentación. Consulte http://daringfireball.net/projects/markdown/ para obtener más detalles.
+# Doxygen procesa aún más la salida del procesamiento markdown, por lo que puede
+# mezclar comandos doxygen, HTML y XML con formato Markdown. Desactivar solo en
+# caso de problemas de compatibilidades con versiones anteriores.
+# El valor predeterminado es: YES.
 
 MARKDOWN_SUPPORT       = YES
 
-# When the TOC_INCLUDE_HEADINGS tag is set to a non-zero value, all headings up
-# to that level are automatically included in the table of contents, even if
-# they do not have an id attribute.
-# Note: This feature currently applies only to Markdown headings.
-# Minimum value: 0, maximum value: 99, default value: 0.
-# This tag requires that the tag MARKDOWN_SUPPORT is set to YES.
+# Cuando la etiqueta TOC_INCLUDE_HEADINGS se establece en un valor distinto de cero, todos los encabezados por encima
+# de ese nivel se incluyen automáticamente en la tabla de contenido, incluso si
+# no tienen un atributo id.
+# Nota: esta función actualmente se aplica solo a los títulos de Markdown.
+# Valor mínimo: 0, valor máximo: 99, valor predeterminado: 0.
+# Esta etiqueta requiere que la etiqueta MARKDOWN_SUPPORT esté establecida en YES.
 
 TOC_INCLUDE_HEADINGS   = 0
 
-# When enabled doxygen tries to link words that correspond to documented
-# classes, or namespaces to their corresponding documentation. Such a link can
-# be prevented in individual cases by putting a % sign in front of the word or
-# globally by setting AUTOLINK_SUPPORT to NO.
-# The default value is: YES.
+# Cuando está habilitado, doxygen intenta vincular palabras que corresponden a clases documentadas
+# o espacios de nombres. Tal vínculo puede ser prevenido en casos individuales poniendo un 
+# signo % delante de la palabra o globalmente configurando AUTOLINK_SUPPORT en NO.
+# El valor predeterminado es: YES.
 
 AUTOLINK_SUPPORT       = YES
 
-# If you use STL classes (i.e. std::string, std::vector, etc.) but do not want
-# to include (a tag file for) the STL sources as input, then you should set this
-# tag to YES in order to let doxygen match functions declarations and
-# definitions whose arguments contain STL classes (e.g. func(std::string);
-# versus func(std::string) {}). This also make the inheritance and collaboration
-# diagrams that involve STL classes more complete and accurate.
-# The default value is: NO.
+# Si usa clases STL (es decir, std::string, std::vector, etc.) pero no desea
+# incluir (un archivo de etiqueta para) las fuentes STL como entrada, entonces debe configurar esto
+# a YES para permitir que doxygen coincida con las declaraciones de funciones y
+# definiciones cuyos argumentos contienen clases STL (por ejemplo, func (std::string);
+# versus func(std::string) {}). Esto también hace que la herencia y diagramas
+# de colaboración que involucran clases STL más completos y precisos.
+# El valor predeterminado es: NO.
 
 BUILTIN_STL_SUPPORT    = NO
 
-# If you use Microsoft's C++/CLI language, you should set this option to YES to
-# enable parsing support.
-# The default value is: NO.
+# Si usa el lenguaje C++/CLI de Microsoft, debe configurar esta opción en YES para
+# habilitar el soporte de análisis.
+# El valor predeterminado es: NO.
 
 CPP_CLI_SUPPORT        = NO
 
-# Set the SIP_SUPPORT tag to YES if your project consists of sip (see:
-# https://www.riverbankcomputing.com/software/sip/intro) sources only. Doxygen
-# will parse them like normal C++ but will assume all classes use public instead
-# of private inheritance when no explicit protection keyword is present.
-# The default value is: NO.
+# Establezca la etiqueta SIP_SUPPORT en YES si su proyecto consta solo de fuentes sip (consulte:
+# https://www.riverbankcomputing.com/software/sip/intro) . Doxygen
+# los analizará como C++ normal pero asumirá que todas las clases usan herencia pública en lugar
+# de privada cuando no está presente ninguna palabra clave de protección explícita.
+# El valor predeterminado es: NO.
 
 SIP_SUPPORT            = NO
 
