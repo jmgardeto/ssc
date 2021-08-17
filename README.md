@@ -14,8 +14,7 @@ SSC requiere la construcción de otros proyectos de código abierto:
 - [WEX](https://github.com/nrel/wex)
 - [jsoncpp](https://github.com/open-source-parsers/jsoncpp)
 
-However, if you remove SDKtool and TCSconsole from your SSC project, you can build SSC without any other software dependencies. Please see the main [SAM project wiki](https://github.com/NREL/SAM/wiki) for complete build instructions and software dependencies.
-Sin embargo, si elimina SDKtool y TCSconsole de su proyecto SSC, puede crear SSC sin otras dependencias de software. Consulte la [wiki del proyecto SAM] (https://github.com/NREL/SAM/wiki)  principal para obtener instrucciones de compilación completas y dependencias de software.
+Sin embargo, si elimina SDKtool y TCSconsole de su proyecto SSC, puede crear SSC sin otras dependencias de software. Consulte la [wiki del proyecto SAM] (https://github.com/NREL/SAM/wiki) principal para obtener instrucciones de compilación completas y dependencias de software.
 
 SSC directly includes source code from three other open-source projects, and builds them as part of its build process.  These projects and their respective licenses are:
 - [NLopt](https://nlopt.readthedocs.io/en/latest/) - code located [here](https://github.com/NREL/ssc/tree/develop/nlopt), [LGPL license](https://nlopt.readthedocs.io/en/latest/NLopt_License_and_Copyright/)
