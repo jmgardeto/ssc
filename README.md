@@ -6,7 +6,7 @@ El repositorio de proyectos de código abierto de SSC contiene el código fuente
 
 Podría pensar en SSC como el hogar de los algoritmos del programa de escritorio SAM. La mayoría de las personas ejecutan el código a través de la interfaz de usuario de escritorio, pero SSC también se puede ejecutar directamente usando el [SAM Sofware Develoment Kit](https://sam.nrel.gov/sdk).
 
-SSC requires building four other open-source projects:
+SSC requiere la construcción de otros proyectos de código abierto:
 
 - [Google Test](https://github.com/google/googletest)
 - [LK](https://github.com/nrel/lk)
@@ -15,6 +15,7 @@ SSC requires building four other open-source projects:
 - [jsoncpp](https://github.com/open-source-parsers/jsoncpp)
 
 However, if you remove SDKtool and TCSconsole from your SSC project, you can build SSC without any other software dependencies. Please see the main [SAM project wiki](https://github.com/NREL/SAM/wiki) for complete build instructions and software dependencies.
+Sin embargo, si elimina SDKtool y TCSconsole de su proyecto SSC, puede crear SSC sin otras dependencias de software. Consulte la [wiki del proyecto SAM] (https://github.com/NREL/SAM/wiki)  principal para obtener instrucciones de compilación completas y dependencias de software.
 
 SSC directly includes source code from three other open-source projects, and builds them as part of its build process.  These projects and their respective licenses are:
 - [NLopt](https://nlopt.readthedocs.io/en/latest/) - code located [here](https://github.com/NREL/ssc/tree/develop/nlopt), [LGPL license](https://nlopt.readthedocs.io/en/latest/NLopt_License_and_Copyright/)
