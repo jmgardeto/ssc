@@ -16,10 +16,10 @@ SSC requiere la construcción de otros proyectos de código abierto:
 
 Sin embargo, si elimina SDKtool y TCSconsole de su proyecto SSC, puede crear SSC sin otras dependencias de software. Consulte la [wiki del proyecto SAM] (https://github.com/NREL/SAM/wiki) principal para obtener instrucciones de compilación completas y dependencias de software.
 
-SSC directly includes source code from three other open-source projects, and builds them as part of its build process.  These projects and their respective licenses are:
-- [NLopt](https://nlopt.readthedocs.io/en/latest/) - code located [here](https://github.com/NREL/ssc/tree/develop/nlopt), [LGPL license](https://nlopt.readthedocs.io/en/latest/NLopt_License_and_Copyright/)
-- [lp_solve](http://lpsolve.sourceforge.net/5.5/) - code located [here](https://github.com/NREL/ssc/tree/develop/lpsolve), [LGPL license](https://www.gnu.org/licenses/old-licenses/lgpl-2.1.en.html)
-- [splinter](https://github.com/bgrimstad/splinter) - code located [here](https://github.com/NREL/ssc/tree/develop/splinter), [MPL license](https://github.com/bgrimstad/splinter/blob/master/LICENSE)
+SSC incluye directamente el código fuente de otros tres proyectos de código abierto y los construye como parte de su proceso de construcción. Estos proyectos y sus respectivas licencias son:
+- [NLopt](https://nlopt.readthedocs.io/en/latest/) - codigo [aqui](https://github.com/NREL/ssc/tree/develop/nlopt), [licencia LGPL](https://nlopt.readthedocs.io/en/latest/NLopt_License_and_Copyright/)
+- [lp_solve](http://lpsolve.sourceforge.net/5.5/) - codigo [aqui](https://github.com/NREL/ssc/tree/develop/lpsolve), [licencia LGPL](https://www.gnu.org/licenses/old-licenses/lgpl-2.1.en.html)
+- [splinter](https://github.com/bgrimstad/splinter) - codigo [aqui](https://github.com/NREL/ssc/tree/develop/splinter), [licencia MPL](https://github.com/bgrimstad/splinter/blob/master/LICENSE)
 
 
 To explore the code and understand the algorithms used in SSC, start by looking in the "SSC" project at the compute modules (files starting with cmod_) to find the compute module for the technology or financial model of interest.
