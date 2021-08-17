@@ -136,7 +136,7 @@ Secciones Collection:
 - 1: &nbsp;&nbsp;&nbsp; Descarga de bomba SF individual al cabezal de descarga de la bomba SF
 - 2: &nbsp;&nbsp;&nbsp; Cabezal de descarga de la bomba SF a los cabezales de la sección del campo de recolección (es decir, canales)
 - 3: &nbsp;&nbsp;&nbsp; Cabezales de salida de la sección del campo del colector (es decir, canales) al vaso de expansión (almacenamiento indirecto) o al tanque de almacenamiento térmico caliente (almacenamiento directo)
-- 4: &nbsp;&nbsp;&nbsp; Bypass branch - Ramal de derivación: cabezales de salida de la sección del campo del colector (es decir, canales) al cabezal de succión de la bomba (indirecto) o al tanque de almacenamiento térmico frío (directo)
+- 4: &nbsp;&nbsp;&nbsp; Ramal de derivación: cabezales de salida de la sección del campo del colector (es decir, canales) al cabezal de succión de la bomba (indirecto) o al tanque de almacenamiento térmico frío (directo)
 
 Secciones Generation:
 - 5: &nbsp;&nbsp;&nbsp; Cabezal de succión de bomba SGS a entrada de bomba SGS individual (aplicable solo para almacenamiento en serie con SF)
@@ -188,43 +188,43 @@ longitudes en metros de todas las secciones del cabezal, incluidas las longitude
 caudal másico en kg/s del fluido caloportador en cada sección del colector en las condiciones de diseño. El primer valor está en la sección antes del primer conjunto de bucles en el cabezal frío y el último valor está en la sección después del último conjunto de bucles en el cabezal caliente. El caudal másico de las secciones de colector frío es el mismo que el que entra en la sección, y el caudal másico de las secciones de colector caliente es el mismo que el que sale de la sección. [^](#toc)
 
 ### pipe_header_P_dsn
-gauge pressure in bar of the heat transfer fluid entering each section of the farthest header at design conditions. The first value is for the section before the first set of loops in the cold header and the last value is for the section after the last set of loops in the hot header. [^](#toc)
+presión manométrica en bares del fluido caloportador que entra en cada sección del cabezal más alejado en las condiciones de diseño. El primer valor es para la sección antes del primer conjunto de bucles en el cabezal frío y el último valor es para la sección después del último conjunto de bucles en el cabezal caliente. [^](#toc)
 
 ### pipe_header_T_dsn
-temperature in Celsius of the heat transfer fluid entering each section of the farthest header at design conditions. The first value is for the section before the first set of loops in the cold header and the last value is for the section after the last set of loops in the hot header. [^](#toc)
+temperatura en grados Celsius del fluido de transferencia de calor que ingresa a cada sección del cabezal más lejano en las condiciones de diseño. El primer valor es para la sección antes del primer conjunto de bucles en el cabezal frío y el último valor es para la sección después del último conjunto de bucles en el cabezal caliente. [^](#toc)
 
 ### pipe_header_vel_dsn
-velocity in m/s of the heat transfer fluid in each header section at design conditions. The first value is in the section before the first set of loops in the cold header and the last value is in the section after the last set of loops in the hot header. The velocity for the cold header sections is the same as that entering the section, and the velocity for the hot header sections is the same as that leaving the section. [^](#toc)
+velocidad en m/s del fluido caloportador en cada sección del colector en las condiciones de diseño. El primer valor está en la sección antes del primer conjunto de bucles en el cabezal frío y el último valor está en la sección después del último conjunto de bucles en el cabezal caliente. La velocidad para las secciones del cabezal frío es la misma que la que ingresa a la sección, y la velocidad para las secciones del cabezal caliente es la misma que la que sale de la sección. [^](#toc)
 
 ### pipe_header_wallthk
-wall thickness of header pipe sections in [m] [^](#toc)
+espesor de la pared de las secciones del tubo colector en [m] [^](#toc)
 
 ### pipe_loop_P_dsn
-gauge pressure in bar of the heat transfer fluid entering each node in the farthest loop at design conditions. The values correspond to: [^](#toc)
-- 0: &nbsp;&nbsp;&nbsp; the inlet interconnect carrying twice the loop mass flow rate
-- 1: &nbsp;&nbsp;&nbsp; the interconnect before the first SCA
-- 2: &nbsp;&nbsp;&nbsp; the first SCA
-- 3: &nbsp;&nbsp;&nbsp; the interconnect between the first and second SCA
-- 4: &nbsp;&nbsp;&nbsp; the second SCA
+presión manométrica en bar del fluido caloportador que ingresa a cada nodo en el bucle más lejano en las condiciones de diseño. Los valores corresponden a: [^](#toc)
+- 0: &nbsp;&nbsp;&nbsp; la interconexión de entrada lleva el doble del caudal másico del bucle
+- 1: &nbsp;&nbsp;&nbsp; la interconexión antes del primer SCA
+- 2: &nbsp;&nbsp;&nbsp; el primer SCA
+- 3: &nbsp;&nbsp;&nbsp; la interconexión entre el primer y el segundo SCA
+- 4: &nbsp;&nbsp;&nbsp; el segundo SCA
 - ...
-- n-3: &nbsp;&nbsp;&nbsp; the last SCA
-- n-2: &nbsp;&nbsp;&nbsp; the interconnect after the last SCA
-- n-1: &nbsp;&nbsp;&nbsp; the outlet interconnect carrying twice the loop mass flow rate
+- n-3: &nbsp;&nbsp;&nbsp; el último SCA
+- n-2: &nbsp;&nbsp;&nbsp; la interconexión después del último SCA
+- n-1: &nbsp;&nbsp;&nbsp; la interconexión de salida lleva el doble del caudal másico del bucle
 
 ### pipe_loop_T_dsn
-temperature in Celsius of the heat transfer fluid entering each node in the farthest loop at design conditions. The values correspond to: [^](#toc)
-- 0: &nbsp;&nbsp;&nbsp; the inlet interconnect carrying twice the loop mass flow rate
-- 1: &nbsp;&nbsp;&nbsp; the interconnect before the first SCA
-- 2: &nbsp;&nbsp;&nbsp; the first SCA
-- 3: &nbsp;&nbsp;&nbsp; the interconnect between the first and second SCA
-- 4: &nbsp;&nbsp;&nbsp; the second SCA
+temperatura en grados Celsius del fluido de transferencia de calor que ingresa a cada nodo en el bucle más lejano en las condiciones de diseño. Los valores corresponden a: [^](#toc)
+- 0: &nbsp;&nbsp;&nbsp; la interconexión de entrada lleva el doble del caudal másico del bucle
+- 1: &nbsp;&nbsp;&nbsp; la interconexión antes del primer SCA
+- 2: &nbsp;&nbsp;&nbsp; el primer SCA
+- 3: &nbsp;&nbsp;&nbsp; la interconexión entre el primer y el segundo SCA
+- 4: &nbsp;&nbsp;&nbsp; el segundo SCA
 - ...
-- n-3: &nbsp;&nbsp;&nbsp; the last SCA
-- n-2: &nbsp;&nbsp;&nbsp; the interconnect after the last SCA
-- n-1: &nbsp;&nbsp;&nbsp; the outlet interconnect carrying twice the loop mass flow rate
+- n-3: &nbsp;&nbsp;&nbsp; el último SCA
+- n-2: &nbsp;&nbsp;&nbsp; la interconexión después del último SCA
+- n-1: &nbsp;&nbsp;&nbsp; la interconexión de salida lleva el doble del caudal másico del bucle
 
 ### pipe_runner_diams
-inner diameters in meters of the runners listed in L_runner. The first diameter is for the runner that carries half the total mass flow. Example diameters are: [^](#toc)
+diámetros interiores en metros de los tramos enumerados en L_runner. El primer diámetro es para el tramo que transporta la mitad del flujo másico total. Los diámetros de ejemplo son: [^](#toc)
 * 2 field sections = {x1}
 * 4 field sections = {x1, x1}
 * 6 field sections = {x1, x2}
@@ -232,10 +232,10 @@ inner diameters in meters of the runners listed in L_runner. The first diameter 
 * 10 field sections = {x1, x4, x5}
 
 ### pipe_runner_expansions
-number of expansions or contractions in the given runner section [^](#toc)
+número de expansiones o contracciones en la sección de tramo dada [^](#toc)
 
 ### pipe_runner_lengths
-lengths in meters of the different diameter runners that extend away from the power block in one direction. L_runner[0] is currently defaulted to 25, which is for the runner piping in and around the power block before it heads out to the field in the main runners. L_runner[0] was previously shared with the other identical set of runners for the other half of the solar field, but this is no longer the case. The runner lengths include expansion loops, except for L_runner[0]. For a given row spacing, SCA length, gap between SCAs, and number of SCA's, example values are: [^](#toc)
+longitudes en metros de llos tramos de diferentes diámetros que se extienden desde el bloque de potencia en una dirección. L_runner [0] actualmente está predeterminado en 25, que es para la tubería del corredor dentro y alrededor del bloque de energía antes de que se dirija al campo en los canales principales. L_runner [0] se compartió previamente con el otro conjunto idéntico de corredores para la otra mitad del campo solar, pero este ya no es el caso. Las longitudes de los canales incluyen bucles de expansión, excepto para L_runner [0]. Para un espaciado de fila dado, longitud de SCA, espacio entre SCA y número de SCA, los valores de ejemplo son: [^](#toc)
 * 2 field sections = {L_rnr_pb}
 * 4 field sections = {L_rnr_pb, x}
 * 6 field sections = {L_rnr_pb, 2x}
@@ -243,34 +243,34 @@ lengths in meters of the different diameter runners that extend away from the po
 * 10 field sections = {L_rnr_pb, 2x, 2x}
 
 ### pipe_runner_mdot_dsn
-mass flow rate in kg/s of the heat transfer fluid in each runner section at design conditions. The first value is in the section in and around the power block before it heads out to the field in the main runners. The last value is in the section in and around the power block after it comes back from the field. The mass flow for the cold runner sections is the same as that entering the section, and the mass flow for the hot runner sections is the same as that leaving the section. [^](#toc)
+caudal másico en kg/s del fluido caloportador en cada sección de canal en las condiciones de diseño. El primer valor está en la sección dentro y alrededor del bloque de energía antes de que se dirija al campo en los corredores principales. El último valor está en la sección dentro y alrededor del bloque de energía después de que regresa del campo. El caudal másico de los tramos de canal frío es el mismo que el que entra en el tramo y el caudal másico de los tramos de canal caliente es el mismo que el que sale del tramo. [^](#toc)
 
 ### pipe_runner_P_dsn
-pressure in bar of the heat transfer fluid entering each runner section at design conditions. The first value is for the section in and around the power block before it heads out to the field in the main runners. The last value is in the section in and around the power block after it comes back from the field. [^](#toc)
+presión en bar del fluido caloportador que ingresa a cada sección de canal en las condiciones de diseño. El primer valor es para la sección dentro y alrededor del bloque de energía antes de que se dirija al campo en los corredores principales. El último valor está en la sección dentro y alrededor del bloque de energía después de que regresa del campo. [^](#toc)
 
 ### pipe_runner_T_dsn
-temperature in Celsius of the heat transfer fluid entering each runner section at design conditions. The first value is for the section in and around the power block before it heads out to the field in the main runners. The last value is in the section in and around the power block after it comes back from the field. [^](#toc)
+presión en bar del fluido caloportador que ingresa a cada sección de canal en las condiciones de diseño. El primer valor es para la sección dentro y alrededor del bloque de energía antes de que se dirija al campo en los corredores principales. El último valor está en la sección dentro y alrededor del bloque de energía después de que regresa del campo.[^](#toc)
 
 ### pipe_runner_vel_dsn
-velocity in m/s of the heat transfer fluid in each runner section at design conditions. The first value is in the section in and around the power block before it heads out to the field in the main runners. The last value is in the section in and around the power block after it comes back from the field. The velocity for the cold runner sections is the same as that entering the section, and the velocity for the hot runner sections is the same as that leaving the section. [^](#toc)
+velocidad en m/s del fluido caloportador en cada sección del rodete en las condiciones de diseño. El primer valor está en la sección dentro y alrededor del bloque de energía antes de que se dirija al campo en los corredores principales. El último valor está en la sección dentro y alrededor del bloque de energía después de que regresa del campo. La velocidad para las secciones de canal frío es la misma que la que ingresa a la sección, y la velocidad para las secciones de canal caliente es la misma que la que sale de la sección. [^](#toc)
 
 ### pipe_runner_wallthk
-wall thickness of runner pipe sections in [m] [^](#toc)
+espesor de la pared de las secciones de la tubería del corredor en [m] [^](#toc)
 
 ### pipe_sgs_diams
-SGS pipe inner diameters in [m] [^](#toc)
+Diámetros internos de tubería SGS en [m] [^](#toc)
  
 ### pipe_sgs_mdot_dsn
-SGS mass flow in each pipe section in [kg/s] [^](#toc)
+Caudal másico SGS en cada sección de tubería en [kg/s] [^](#toc)
 
 ### pipe_sgs_P_dsn
-SGS pressure in each pipe section in [bar] [^](#toc)
+Presión SGS en cada sección de tubería en [bar] [^](#toc)
 
 ### pipe_sgs_T_dsn
-SGS temperature in each pipe section in [C] [^](#toc)
+temperatura SGS en cada sección de tubería en [C] [^](#toc)
  
 ### pipe_sgs_vel_dsn
-SGS velocity in each pipe section in [m/s] [^](#toc)
+velocidad SGS en cada sección de tubería en [m/s] [^](#toc)
  
 ### pipe_sgs_wallthk
-SGS wall thickness of each pipe section in [m] [^](#toc)
+Espesor de pared SGS de cada sección de tubería en [m] [^](#toc)
