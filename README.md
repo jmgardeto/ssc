@@ -2,9 +2,9 @@
 [![Build Status](https://travis-ci.com/NREL/ssc.svg?branch=develop)](https://travis-ci.com/NREL/ssc)
 [![FOSSA Status](https://app.fossa.io/api/projects/git%2Bgithub.com%2FNREL%2Fssc.svg?type=shield)](https://app.fossa.io/projects/git%2Bgithub.com%2FNREL%2Fssc?ref=badge_shield)
 
-The SSC Open Source Project repository contains the source code for the technology and financial models contained within the National Renewable Energy Laboratory's System Advisor Model (SAM). For more details about SAM's capabilities, see the SAM website at [https://sam.nrel.gov/](https://sam.nrel.gov).
+El repositorio de proyectos de código abierto de SSC contiene el código fuente para la tecnología y los modelos financieros contenidos en el Modelo de Asesor de Sistemas (SAM) del Laboratorio Nacional de Energía Renovable. Para obtener más detalles sobre las capacidades de SAM, consulte el sitio web de SAM en [https://sam.nrel.gov/](https://sam.nrel.gov).
 
-You could think of SSC as the home for the algorithms behind the SAM desktop program. Most people run the code through the desktop user interface, but SSC can also be run directly using the [SAM Sofware Develoment Kit](https://sam.nrel.gov/sdk).
+Podría pensar en SSC como el hogar de los algoritmos del programa de escritorio SAM. La mayoría de las personas ejecutan el código a través de la interfaz de usuario de escritorio, pero SSC también se puede ejecutar directamente usando el [SAM Sofware Develoment Kit](https://sam.nrel.gov/sdk).
 
 SSC requires building four other open-source projects:
 
