@@ -341,48 +341,46 @@ CPP_CLI_SUPPORT        = NO
 
 SIP_SUPPORT            = NO
 
-# For Microsoft's IDL there are propget and propput attributes to indicate
-# getter and setter methods for a property. Setting this option to YES will make
-# doxygen to replace the get and set methods by a property in the documentation.
-# This will only work if the methods are indeed getting or setting a simple
-# type. If this is not the case, or you want to show the methods anyway, you
-# should set this option to NO.
-# The default value is: YES.
+# Para el IDL de Microsoft hay atributos propget y propput para indicar
+# métodos getter y setter para una propiedad. Si configura esta opción en YES,
+# doxygen  reemplaza los métodos get y set por una propiedad en la documentación.
+# Esto solo funcionará si los métodos están obteniendo o configurando un tipo simple.
+# Si este no es el caso, o si desea mostrar los métodos de todos modos,
+# debe establecer esta opción en NO.
+# El valor predeterminado es: YES.
 
 IDL_PROPERTY_SUPPORT   = YES
-
-# If member grouping is used in the documentation and the DISTRIBUTE_GROUP_DOC
-# tag is set to YES then doxygen will reuse the documentation of the first
-# member in the group (if any) for the other members of the group. By default
-# all members of a group must be documented explicitly.
-# The default value is: NO.
+# Si se utiliza la agrupación de miembros en la documentación y DISTRIBUTE_GROUP_DOC
+# se establece en YES, doxygen reutilizará la documentación del primer
+# miembro en el grupo (si lo hay) para los otros miembros del grupo. Por defecto
+# todos los miembros de un grupo deben estar documentados explícitamente.
+# El valor predeterminado es: NO.
 
 DISTRIBUTE_GROUP_DOC   = NO
-
-# If one adds a struct or class to a group and this option is enabled, then also
-# any nested class or struct is added to the same group. By default this option
-# is disabled and one has to add nested compounds explicitly via \ingroup.
-# The default value is: NO.
+# Si uno agrega una estructura o clase a un grupo y esta opción está habilitada, entonces
+# cualquier clase o estructura anidada se agrega al mismo grupo. Por defecto esta opción
+# está deshabilitada y hay que agregar compuestos anidados explícitamente a través de \ingroup.
+# El valor predeterminado es: NO.
 
 GROUP_NESTED_COMPOUNDS = NO
 
-# Set the SUBGROUPING tag to YES to allow class member groups of the same type
-# (for instance a group of public functions) to be put as a subgroup of that
-# type (e.g. under the Public Functions section). Set it to NO to prevent
-# subgrouping. Alternatively, this can be done per class using the
-# \nosubgrouping command.
-# The default value is: YES.
+# Establezca la etiqueta SUBGROUPING en YES para permitir grupos de miembros de la clase del mismo tipo
+# (por ejemplo, un grupo de funciones públicas) para ser colocado como un subgrupo de ese
+# tipo (por ejemplo, en la sección Funciones públicas). Configúrelo en NO para evitar
+# subgrupos. Alternativamente, esto se puede hacer por clase usando el
+# comando \nosubgrouping.
+# El valor predeterminado es: YES.
 
 SUBGROUPING            = YES
 
-# When the INLINE_GROUPED_CLASSES tag is set to YES, classes, structs and unions
-# are shown inside the group in which they are included (e.g. using \ingroup)
-# instead of on a separate page (for HTML and Man pages) or section (for LaTeX
-# and RTF).
+# Cuando la etiqueta INLINE_GROUPED_CLASSES se establece en YES, las clases, estructuras y uniones
+# se muestran dentro del grupo en el que están incluidas (por ejemplo, usando \ingroup)
+# en lugar de en una página separada (para páginas HTML y Man) o sección (para LaTeX
+# y RTF).
 #
-# Note that this feature does not work in combination with
+# Tenga en cuenta que esta función no funciona en combinación con
 # SEPARATE_MEMBER_PAGES.
-# The default value is: NO.
+# El valor predeterminado es: NO.
 
 INLINE_GROUPED_CLASSES = NO
 
